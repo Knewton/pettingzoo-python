@@ -1,0 +1,8 @@
+# compiled code
+*.pyc
+
+# swap files
+*.swp
+
+# py.test coverage files
+.coverage
