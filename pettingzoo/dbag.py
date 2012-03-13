@@ -1,9 +1,6 @@
 import zc.zk
 import zookeeper
 
-def connect_to_zk(servers):
-	return zc.zk.ZooKeeper(servers)
-
 ITEM_PATH = "/item";
 TOKEN_PATH = "/token";
 

@@ -1,5 +1,6 @@
 import unittest
 from pettingzoo.dbag import *
+from pettingzoo.config import connect_to_zk
 
 class DbagTests(unittest.TestCase):
 	def setUp(self):
