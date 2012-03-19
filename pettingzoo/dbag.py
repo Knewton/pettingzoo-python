@@ -1,5 +1,8 @@
 import zc.zk
 import zookeeper
+import multiprocessing
+import sys
+import pettingzoo.utils
 
 ITEM_PATH = "/item";
 TOKEN_PATH = "/token";
@@ -10,7 +13,15 @@ class DistributedBag(object):
 		self.path = path
 		self.connection.create_recursive(path + ITEM_PATH, "", acl=zc.zk.OPEN_ACL_UNSAFE)
 		self.connection.create_recursive(path + TOKEN_PATH, "", acl=zc.zk.OPEN_ACL_UNSAFE)
-		self.max_token = max_counter(self.connection.children(path + TOKEN_PATH))
+		self.write_lock = multiprocessing.RLock()
+		self.read_lock = multiprocessing.RLock()
+		self.ids = set()
+		self.add_callbacks = []
+		self.delete_callbacks = []
+		self.deletion_handlers = {}
+		self.children = self.connection.children(path + TOKEN_PATH)
+		self.max_token = max_counter(self.children)
+		self.children(self._process_children_changed)
 
 	def add(self, data, ephemeral=True):
 		"""
@@ -38,7 +49,7 @@ class DistributedBag(object):
 		"""
 		Remove an item from the bag.
 		Parameters:
-			item_id - of node to delete (returned by addElement)
+			item_id - of node to deleteid_to_item_path(path, item_id) (returned by addElement)
 		Returns:
 			true if node was deleted, false if node did not exist
 		"""
@@ -61,20 +72,73 @@ class DistributedBag(object):
 		except zookeeper.NoNodeException:
 			return None
 
-	def add_listener(self, bag_listener):
-		pass
+	def add_listeners(self, add_callback=None, remove_callback=None):
+		"""
+		Allows caller to add callbacks for item addition and item removal.
+		Parameters:
+			add_callback - (Optional) callback that will be called when an id is created.
+			remove_callback - (Optional) callback that will be called when an id is created.
+		Callbacks are expected to have the following interface:
+		Parameters:
+			dbag - This object
+			affected_id - The id that is being added or deleted, as appropriate to the call
+		"""
+		with self.write_lock:
+			if add_callback:
+				self.add_callbacks.append(add_callback)
+			if remove_callback:
+				self.delete_callbacks.append(remove_callback)
+			return self.get_items()
 
 	def get_items(self):
-		pass
+		"""
+		Returns a set of presently existant item ids.
+		Returns:
+			set of integers
+		"""
+		with self.read_lock:
+			return self.ids.copy()
 
-	def on_delete_id(self):
-		pass
+	def _on_delete_id(self, removed_id):
+		"""
+		Called internally when an item is deleted.  Not intended for external use.
+		"""
+		with self.write_lock:
+			self.ids.remove(removed_id)
+			for callback in self.delete_callbacks:
+				callback(self, removed_id)
 
-	def on_new_id(self):
-		pass
+	def _on_new_id(self, new_id):
+		"""
+		Called intenally when an item is added.  Not intended for external use.
+		"""
+		path = id_to_item_path(self.path, new_id)
+		exists = pettingzoo.utils.Exists(self.connection, path, [self._process_deleted])
+		with self.write_lock:
+			self.deletion_handlers[new_id] = exists
+			self.ids.add(new_id)
+			for callback in self.add_callbacks:
+				callback(self, new_id)
 
-	def process(self, event):
-		pass
+	def _process_children_changed(self, children):
+		"""
+		Callback used for Children object.  Not intended for external use.
+		"""
+		new_max = max_counter(children)
+		with self.write_lock:
+			while self.max_token < new_max:
+				self.max_token += 1
+				self._on_new_id(self.max_token)
+
+	def _process_deleted(self, node):
+		"""
+		Callback used for Exists object.  Not intended for external use.
+		"""
+		del_id = counter_value(node.path)
+		self._on_delete_id(del_id)
+		with self.write_lock:
+			del self.deletion_handlers[del_id]
+        
 
 def id_to_item_path(path, item_id):
 	"""
@@ -97,15 +161,36 @@ def id_to_token_path(path, item_id):
 	return counter_path(path + TOKEN_PATH + TOKEN_PATH, item_id)
 
 def counter_path(path, counter):
+	"""
+	Takes in a path and a counter and returns a zookeeper appropriate path.
+	Parameters:
+		path - The full path before the counter
+		counter - An integer used as the counter
+	Returns:
+		a zookeeper path with a counter.
+	"""
 	return "%s%010d" % (path, counter)
 
 def counter_value(path):
+	"""
+	Converts a zookeeper path with a counter into an integer of that counter
+	Parameters:
+		path - a zookeeper path
+	Returns:
+		the integer encoded in the last 10 characters.
+	"""
 	return int(path[-10:])
 
 def max_counter(children):
+	"""
+	Loops through a children iterator and returns the maximum counter id.
+	Parameters:
+		children: an iteratable object containing strings with the zookeeper id standard
+	Returns:
+		Maximum id
+	"""
 	numbers = [-1]
 	for child in children:
 		numbers.append(counter_value(child))
-	numbers.sort()
-	return numbers[-1]
+	return max(numbers)
 

@@ -3,13 +3,13 @@ import knewton.config
 import pettingzoo.config
 import yaml
 import time
+from pettingzoo.utils import connect_to_zk
 
 class ConfigTests(unittest.TestCase):
 	def setUp(self):
-		self.connection = pettingzoo.config.connect_to_zk('127.0.0.1:2181')
+		self.connection = connect_to_zk('127.0.0.1:2181')
 		self.path = '/test_config'
 		pettingzoo.config.CONFIG_PATH = self.path
-		self.created_path = None
 		self.sample = {'database': {'username': 'reports', 'host': 'localhost', 'password': 'reports', 'database': 'reports', 'adapter': 'mysql', 'encoding': 'utf8'}}
 
 	def test_write_distributed_config(self):
@@ -37,16 +37,15 @@ class ConfigTests(unittest.TestCase):
 	def tearDown(self):
 		pettingzoo.config.CONFIG_PATH = '/config'
 		self.connection.close()
-		self.connection = pettingzoo.config.connect_to_zk('127.0.0.1:2181')
+		self.connection = connect_to_zk('127.0.0.1:2181')
 		self.connection.delete_recursive(self.path)
 		self.connection.close()
 
 class DistributedConfigTests(unittest.TestCase):
 	def setUp(self):
-		self.connection = pettingzoo.config.connect_to_zk('127.0.0.1:2181')
+		self.connection = connect_to_zk('127.0.0.1:2181')
 		self.path = '/test_config'
 		pettingzoo.config.CONFIG_PATH = self.path
-		self.created_path = None
 		self.sample = {'database': {'username': 'reports', 'host': 'localhost', 'password': 'reports', 'database': 'reports', 'adapter': 'mysql', 'encoding': 'utf8'}}
 
 	def test_distributed_config_dne(self):
@@ -74,7 +73,6 @@ class DistributedConfigTests(unittest.TestCase):
 		self.cbpath = None
 		self.cbconfig = None
 		def cb(path, config):
-			print "WOAH"
 			self.touched = True
 			self.cbpath = path
 			self.cbconfig = config
@@ -102,16 +100,15 @@ class DistributedConfigTests(unittest.TestCase):
 	def tearDown(self):
 		pettingzoo.config.CONFIG_PATH = '/config'
 		self.connection.close()
-		self.connection = pettingzoo.config.connect_to_zk('127.0.0.1:2181')
+		self.connection = connect_to_zk('127.0.0.1:2181')
 		self.connection.delete_recursive(self.path)
 		self.connection.close()
 
 class DistributedMultiConfigTests(unittest.TestCase):
 	def setUp(self):
-		self.connection = pettingzoo.config.connect_to_zk('127.0.0.1:2181')
+		self.connection = connect_to_zk('127.0.0.1:2181')
 		self.path = '/test_config'
 		pettingzoo.config.CONFIG_PATH = self.path
-		self.created_path = None
 		self.sample = {'database': {'username': 'reports', 'host': 'localhost', 'password': 'reports', 'database': 'reports', 'adapter': 'mysql', 'encoding': 'utf8'}}
 		self.sample2 = {'database': {'username': 'reports', 'host': 'notlocalhost', 'password': 'reports', 'database': 'reports', 'adapter': 'mysql', 'encoding': 'utf8'}}
 
@@ -146,16 +143,15 @@ class DistributedMultiConfigTests(unittest.TestCase):
 	def tearDown(self):
 		pettingzoo.config.CONFIG_PATH = '/config'
 		self.connection.close()
-		self.connection = pettingzoo.config.connect_to_zk('127.0.0.1:2181')
+		self.connection = connect_to_zk('127.0.0.1:2181')
 		self.connection.delete_recursive(self.path)
 		self.connection.close()
 
 class FileFallbackTests(unittest.TestCase):
 	def setUp(self):
-		self.connection = pettingzoo.config.connect_to_zk('127.0.0.1:2181')
+		self.connection = connect_to_zk('127.0.0.1:2181')
 		self.path = '/test_config'
 		pettingzoo.config.CONFIG_PATH = self.path
-		self.created_path = None
 		self.sample = {'database': {'username': 'reports', 'host': 'localhost', 'password': 'reports', 'database': 'reports', 'adapter': 'mysql', 'encoding': 'utf8'}}
 		def fake_fetch_knewton_config(default, config=None):
 			self.assertEquals('does/exist', default)
@@ -178,7 +174,7 @@ class FileFallbackTests(unittest.TestCase):
 		knewton.config.fetch_knewton_config = knewton.config._backup_fetch_knewton_config
 		pettingzoo.config.CONFIG_PATH = '/config'
 		self.connection.close()
-		self.connection = pettingzoo.config.connect_to_zk('127.0.0.1:2181')
+		self.connection = connect_to_zk('127.0.0.1:2181')
 		self.connection.delete_recursive(self.path)
 		self.connection.close()
 

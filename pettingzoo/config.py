@@ -5,17 +5,6 @@ import random
 import sys
 import knewton.config
 
-def connect_to_zk(servers):
-	"""
-	Function used to connect to zookeeper for pettingzoo.multiprocessing.
-	Parameters:
-		server - list of zookeeper servers to connect to in the form of a comma
-			seperated list of addresses:port'localhost:2181,10.5.2.1:2181'
-	Returns:
-		zc.zk.ZooKeeper connection
-	"""
-	return zc.zk.ZooKeeper(servers)
-
 CONFIG_PATH = "/config"
 
 def _get_local_ip(interface='eth0'):
