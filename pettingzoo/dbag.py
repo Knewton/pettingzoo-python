@@ -2,6 +2,7 @@ import zc.zk
 import zookeeper
 import multiprocessing
 import sys
+import traceback
 import pettingzoo.utils
 
 ITEM_PATH = "/item";
@@ -21,7 +22,23 @@ class DistributedBag(object):
 		self.deletion_handlers = {}
 		self.children = self.connection.children(path + TOKEN_PATH)
 		self.max_token = max_counter(self.children)
+		self._cleanup_tokens(self.children, self.max_token)
 		self.children(self._process_children_changed)
+		self._populate_ids()
+
+	def _populate_ids(self):
+		ichildren = self.connection.children(self.path + ITEM_PATH)
+		for child in ichildren:
+			self._on_new_id(counter_value(child))
+
+	def _cleanup_tokens(self, children, max_token):
+		for child in children:
+			token_id = counter_value(child)
+			if token_id < max_token:
+				try:
+					self.connection.adelete(id_to_token_path(self.path, token_id))
+				except zookeeper.NoNodeException:
+					pass # If it doesn't exist, that's ok
 
 	def add(self, data, ephemeral=True):
 		"""
@@ -39,10 +56,8 @@ class DistributedBag(object):
 		item_id = counter_value(newpath)
 		self.connection.acreate(id_to_token_path(self.path, item_id), "", zc.zk.OPEN_ACL_UNSAFE)
 		if item_id > 0:
-			try:
-				self.connection.adelete(id_to_token_path(self.path, item_id - 1))
-			except zookeeper.NoNodeException:
-				pass # If it doesn't exist, that's ok
+			children = self.connection.children(self.path + TOKEN_PATH)
+			self._cleanup_tokens(children, item_id)
 		return item_id
 
 	def remove(self, item_id):
@@ -104,31 +119,49 @@ class DistributedBag(object):
 		Called internally when an item is deleted.  Not intended for external use.
 		"""
 		with self.write_lock:
-			self.ids.remove(removed_id)
-			for callback in self.delete_callbacks:
-				callback(self, removed_id)
+			try:
+				self.ids.remove(removed_id)
+				for callback in self.delete_callbacks:
+					callback(self, removed_id)
+			except:
+				exc_class, exc, tb = sys.exc_info()
+				sys.stderr.write(str(exc_class) + "\n")
+				traceback.print_tb(tb)
+				raise exc_class, exc, tb
 
 	def _on_new_id(self, new_id):
 		"""
 		Called intenally when an item is added.  Not intended for external use.
 		"""
-		path = id_to_item_path(self.path, new_id)
-		exists = pettingzoo.utils.Exists(self.connection, path, [self._process_deleted])
-		with self.write_lock:
-			self.deletion_handlers[new_id] = exists
-			self.ids.add(new_id)
-			for callback in self.add_callbacks:
-				callback(self, new_id)
+		try:
+			path = id_to_item_path(self.path, new_id)
+			with self.write_lock:
+				self.ids.add(new_id)
+				exists = pettingzoo.utils.Exists(self.connection, path, [self._process_deleted])
+				self.deletion_handlers[new_id] = exists
+				for callback in self.add_callbacks:
+					callback(self, new_id)
+		except:
+			exc_class, exc, tb = sys.exc_info()
+			sys.stderr.write(str(exc_class) + "\n")
+			traceback.print_tb(tb)
+			raise exc_class, exc, tb
 
 	def _process_children_changed(self, children):
 		"""
 		Callback used for Children object.  Not intended for external use.
 		"""
-		new_max = max_counter(children)
-		with self.write_lock:
-			while self.max_token < new_max:
-				self.max_token += 1
-				self._on_new_id(self.max_token)
+		try:
+			new_max = max_counter(children)
+			with self.write_lock:
+				while self.max_token < new_max:
+					self.max_token += 1
+					self._on_new_id(self.max_token)
+		except:
+			exc_class, exc, tb = sys.exc_info()
+			sys.stderr.write(str(exc) + "\n")
+			traceback.print_tb(tb)
+			raise exc_class, exc, tb
 
 	def _process_deleted(self, node):
 		"""

@@ -1,8 +1,10 @@
-import zc.zk;
+import zc.zk
 import zookeeper
 import threading
+import sys
+import traceback
 
-def connect_to_zk(servers):
+def connect_to_zk(servers, logging=None):
 	"""
 	Function used to connect to zookeeper for pettingzoo.multiprocessing.
 	Parameters:
@@ -11,7 +13,11 @@ def connect_to_zk(servers):
 	Returns:
 		zc.zk.ZooKeeper connection
 	"""
-	return zc.zk.ZooKeeper(servers)
+	if logging:
+		zookeeper.set_log_stream(logging)
+	conn = zc.zk.ZooKeeper(servers)
+	conn.watches.lock = threading.RLock()
+	return conn
 
 class Exists(zc.zk.NodeInfo):
 	"""
@@ -30,8 +36,7 @@ class Exists(zc.zk.NodeInfo):
 		"""
 		Internal function, not intended for external calling
 		"""
-		self.real_path = real_path = self.session.resolve(self.path)
-		self.key = (self.event_type, real_path)
+		self.key = (self.event_type, self.path)
 		if self.session.watches.add(self.key, self):
 			try:
 				self._watch_key()
@@ -42,11 +47,11 @@ class Exists(zc.zk.NodeInfo):
 				if self.session in watches:
 					watches.remove(self.session)
 				if watches:
-					zc.zk.logger.critical('lost watches %s', watches)
+					zc.zk.logger.critical('lost watches %s' % watches)
 				raise
 			pass
 		else:
-			self._notify(self.session.exists(session.handle, self.real_path))
+			self._notify(self.session.exists(session.handle, self.path))
 
 	def _watch_key(self):
 		"""
@@ -60,22 +65,25 @@ class Exists(zc.zk.NodeInfo):
 			try:
 				assert h == self.session.handle
 				assert state == zookeeper.CONNECTED_STATE
-				assert p == self.real_path
+				assert p == self.path
 				if self.key not in self.session.watches:
 					return
 				assert t == self.event_type
 				try:
-					v = zkfunc(self.session.handle, self.real_path, handler)
+					v = zkfunc(self.session.handle, self.path, handler)
 				except zookeeper.NoNodeException:
 					self._rewatch()
 				else:
 					for watch in self.session.watches.watches(self.key):
 						watch._notify(v)
 			except:
-				zc.zk.logger.exception("%s(%s) handler failed", 'exists', self.real_path)
+				exc_class, exc, tb = sys.exc_info()
+				sys.stderr.write(str(exc_class) + "\n")
+				traceback.print_tb(tb)
+				zc.zk.logger.exception("%s(%s) handler failed", 'exists', self.path)
 				if reraise:
-					raise
-		handler(self.session.handle, self.event_type, self.session.state, self.real_path, True)
+					raise exc_class, exc, tb
+		handler(self.session.handle, self.event_type, self.session.state, self.path, True)
 
 	def _rewatch(self):
 		"""
@@ -83,7 +91,7 @@ class Exists(zc.zk.NodeInfo):
 		"""
 		for watch in self.session.watches.pop(key):
 			try:
-				self.real_path = self.session.resolve(self.path)
+				self.path = self.session.resolve(self.path)
 			except (zookeeper.NoNodeException, zc.zk.LinkLoop):
 				zc.zk.logger.exception("%s path went away", watch)
 				watch._deleted()
@@ -100,8 +108,8 @@ class Exists(zc.zk.NodeInfo):
 					callback(self)
 				except Exception, v:
 					self.callbacks.remove(callback)
-					if isinstance(v, CancelWatch):
-						logger.debug("cancelled watch(%r, %r)", self, callback)
+					if isinstance(v, zc.zk.CancelWatch):
+						zc.zk.logger.debug("cancelled watch(%r, %r)", self, callback)
 					else:
-						logger.exception("watch(%r, %r)", self, callback)
+						zc.zk.logger.exception("watch(%r, %r)", self, callback)
 

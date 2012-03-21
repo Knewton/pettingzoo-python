@@ -2,6 +2,7 @@ import unittest
 from pettingzoo.dbag import *
 from pettingzoo.utils import connect_to_zk
 import time
+import sys
 
 class DbagTests(unittest.TestCase):
 	def setUp(self):
