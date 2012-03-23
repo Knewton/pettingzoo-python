@@ -1,9 +1,10 @@
+from __future__ import absolute_import
 import zc.zk
 import zookeeper
 import yaml
 import random
 import sys
-import knewton.config
+import config as conf
 
 CONFIG_PATH = "/config"
 
@@ -139,7 +140,7 @@ class DistributedConfig(object):
 
 	def _load_file_config(self, service_class, service_name, callback=None):
 		path = '/'.join([service_class, service_name])
-		return knewton.config.fetch_knewton_config(path)
+		return conf.KnewtonConfig().fetch_config(path)
 
 	def _child_callback(self, children):
 		path = children.path

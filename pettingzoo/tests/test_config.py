@@ -1,5 +1,5 @@
 import unittest
-import knewton.config
+import config as conf
 import pettingzoo.config
 import yaml
 import time
@@ -153,11 +153,8 @@ class FileFallbackTests(unittest.TestCase):
 		self.path = '/test_config'
 		pettingzoo.config.CONFIG_PATH = self.path
 		self.sample = {'database': {'username': 'reports', 'host': 'localhost', 'password': 'reports', 'database': 'reports', 'adapter': 'mysql', 'encoding': 'utf8'}}
-		def fake_fetch_knewton_config(default, config=None):
-			self.assertEquals('does/exist', default)
-			return self.sample
-		knewton.config._backup_fetch_knewton_config = knewton.config.fetch_knewton_config
-		knewton.config.fetch_knewton_config = fake_fetch_knewton_config
+		conf.KnewtonConfig = conf.KnewtonConfigTest()
+		conf.KnewtonConfig().add_config({'database': {'username': 'reports', 'host': 'localhost', 'password': 'reports', 'database': 'reports', 'adapter': 'mysql', 'encoding': 'utf8'}}, 'does/exist')
 
 	def test_config_file_fallback_dc(self):
 		dmc = pettingzoo.config.DistributedConfig(self.connection)
@@ -171,7 +168,7 @@ class FileFallbackTests(unittest.TestCase):
 		self.assertEquals(config[0][1], self.sample)
 
 	def tearDown(self):
-		knewton.config.fetch_knewton_config = knewton.config._backup_fetch_knewton_config
+		conf.KnewtonConfig = conf.KnewtonConfigDefault()
 		pettingzoo.config.CONFIG_PATH = '/config'
 		self.connection.close()
 		self.connection = connect_to_zk('127.0.0.1:2181')
