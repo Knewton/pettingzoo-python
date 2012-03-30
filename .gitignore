@@ -6,3 +6,9 @@
 
 # py.test coverage files
 .coverage
+
+# build schmutz
+build/
+dist/
+htmlcov/
+pettingzoo.egg-info/

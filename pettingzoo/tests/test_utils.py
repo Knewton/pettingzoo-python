@@ -4,7 +4,16 @@ import sys
 
 class ExistsTests(unittest.TestCase):
 	def setUp(self):
-		self.connection = connect_to_zk('127.0.0.1:2181')
+		self.mock = True
+		self.conn_string = '127.0.0.1:2181'
+		if self.mock:
+			import zc.zk.testing
+			import pettingzoo.testing
+			zc.zk.testing.setUp(self, connection_string=self.conn_string)
+			zc.zk.testing.ZooKeeper.create = pettingzoo.testing.create
+			zc.zk.testing.ZooKeeper.exists = pettingzoo.testing.exists
+			zc.zk.testing.Node.deleted = pettingzoo.testing.deleted
+		self.connection = connect_to_zk(self.conn_string)
 		self.path = '/test_exists'
 
 	def test_exists_watch(self):
@@ -27,3 +36,6 @@ class ExistsTests(unittest.TestCase):
 			pass # does not exist
 		finally:
 			self.connection.close()
+		if self.mock:
+			import zc.zk.testing
+			zc.zk.testing.tearDown(self)

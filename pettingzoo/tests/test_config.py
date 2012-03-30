@@ -1,5 +1,5 @@
 import unittest
-import config as conf
+import k.config
 import pettingzoo.config
 import yaml
 import time
@@ -7,7 +7,12 @@ from pettingzoo.utils import connect_to_zk
 
 class ConfigTests(unittest.TestCase):
 	def setUp(self):
-		self.connection = connect_to_zk('127.0.0.1:2181')
+		self.mock = True
+		self.conn_string = '127.0.0.1:2181'
+		if self.mock:
+			import zc.zk.testing
+			zc.zk.testing.setUp(self, connection_string=self.conn_string)
+		self.connection = connect_to_zk(self.conn_string)
 		self.path = '/test_config'
 		pettingzoo.config.CONFIG_PATH = self.path
 		self.sample = {'database': {'username': 'reports', 'host': 'localhost', 'password': 'reports', 'database': 'reports', 'adapter': 'mysql', 'encoding': 'utf8'}}
@@ -29,10 +34,10 @@ class ConfigTests(unittest.TestCase):
 	def test_remove_stale_config(self):
 		pettingzoo.config.write_distributed_config(self.connection, 'databases', 'reports', self.sample, '127.0.0.1', ephemeral=False)
 		test = self.connection.exists(self.path + '/databases/reports/127.0.0.1')
-		self.assertEqual(test['dataLength'], 119)
+		self.assertTrue(test)
 		pettingzoo.config.remove_stale_config(self.connection, 'databases', 'reports', '127.0.0.1')
 		test = self.connection.exists(self.path + '/databases/reports/127.0.0.1')
-		self.assertTrue(test == None)
+		self.assertTrue(not test)
 
 	def tearDown(self):
 		pettingzoo.config.CONFIG_PATH = '/config'
@@ -40,10 +45,18 @@ class ConfigTests(unittest.TestCase):
 		self.connection = connect_to_zk('127.0.0.1:2181')
 		self.connection.delete_recursive(self.path)
 		self.connection.close()
+		if self.mock:
+			import zc.zk.testing
+			zc.zk.testing.tearDown(self)
 
 class DistributedConfigTests(unittest.TestCase):
 	def setUp(self):
-		self.connection = connect_to_zk('127.0.0.1:2181')
+		self.mock = True
+		self.conn_string = '127.0.0.1:2181'
+		if self.mock:
+			import zc.zk.testing
+			zc.zk.testing.setUp(self, connection_string=self.conn_string)
+		self.connection = connect_to_zk(self.conn_string)
 		self.path = '/test_config'
 		pettingzoo.config.CONFIG_PATH = self.path
 		self.sample = {'database': {'username': 'reports', 'host': 'localhost', 'password': 'reports', 'database': 'reports', 'adapter': 'mysql', 'encoding': 'utf8'}}
@@ -103,10 +116,18 @@ class DistributedConfigTests(unittest.TestCase):
 		self.connection = connect_to_zk('127.0.0.1:2181')
 		self.connection.delete_recursive(self.path)
 		self.connection.close()
+		if self.mock:
+			import zc.zk.testing
+			zc.zk.testing.tearDown(self)
 
 class DistributedMultiConfigTests(unittest.TestCase):
 	def setUp(self):
-		self.connection = connect_to_zk('127.0.0.1:2181')
+		self.mock = True
+		self.conn_string = '127.0.0.1:2181'
+		if self.mock:
+			import zc.zk.testing
+			zc.zk.testing.setUp(self, connection_string=self.conn_string)
+		self.connection = connect_to_zk(self.conn_string)
 		self.path = '/test_config'
 		pettingzoo.config.CONFIG_PATH = self.path
 		self.sample = {'database': {'username': 'reports', 'host': 'localhost', 'password': 'reports', 'database': 'reports', 'adapter': 'mysql', 'encoding': 'utf8'}}
@@ -146,15 +167,23 @@ class DistributedMultiConfigTests(unittest.TestCase):
 		self.connection = connect_to_zk('127.0.0.1:2181')
 		self.connection.delete_recursive(self.path)
 		self.connection.close()
+		if self.mock:
+			import zc.zk.testing
+			zc.zk.testing.tearDown(self)
 
 class FileFallbackTests(unittest.TestCase):
 	def setUp(self):
-		self.connection = connect_to_zk('127.0.0.1:2181')
+		self.mock = True
+		self.conn_string = '127.0.0.1:2181'
+		if self.mock:
+			import zc.zk.testing
+			zc.zk.testing.setUp(self, connection_string=self.conn_string)
+		self.connection = connect_to_zk(self.conn_string)
 		self.path = '/test_config'
 		pettingzoo.config.CONFIG_PATH = self.path
 		self.sample = {'database': {'username': 'reports', 'host': 'localhost', 'password': 'reports', 'database': 'reports', 'adapter': 'mysql', 'encoding': 'utf8'}}
-		conf.KnewtonConfig = conf.KnewtonConfigTest()
-		conf.KnewtonConfig().add_config({'database': {'username': 'reports', 'host': 'localhost', 'password': 'reports', 'database': 'reports', 'adapter': 'mysql', 'encoding': 'utf8'}}, 'does/exist')
+		k.config.KnewtonConfig = k.config.KnewtonConfigTest()
+		k.config.KnewtonConfig().add_config({'database': {'username': 'reports', 'host': 'localhost', 'password': 'reports', 'database': 'reports', 'adapter': 'mysql', 'encoding': 'utf8'}}, 'does/exist')
 
 	def test_config_file_fallback_dc(self):
 		dmc = pettingzoo.config.DistributedConfig(self.connection)
@@ -168,10 +197,13 @@ class FileFallbackTests(unittest.TestCase):
 		self.assertEquals(config[0][1], self.sample)
 
 	def tearDown(self):
-		conf.KnewtonConfig = conf.KnewtonConfigDefault()
+		k.config.KnewtonConfig = k.config.KnewtonConfigDefault()
 		pettingzoo.config.CONFIG_PATH = '/config'
 		self.connection.close()
 		self.connection = connect_to_zk('127.0.0.1:2181')
 		self.connection.delete_recursive(self.path)
 		self.connection.close()
+		if self.mock:
+			import zc.zk.testing
+			zc.zk.testing.tearDown(self)
 

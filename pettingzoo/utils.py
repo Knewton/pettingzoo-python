@@ -3,6 +3,7 @@ import zookeeper
 import threading
 import sys
 import traceback
+import pettingzoo.testing
 
 def connect_to_zk(servers, logging=None):
 	"""
@@ -68,11 +69,17 @@ class Exists(zc.zk.NodeInfo):
 				assert p == self.path
 				if self.key not in self.session.watches:
 					return
-				assert t == self.event_type
+				assert t == self.event_type or t == self.event_type | pettingzoo.testing.TESTING_FLAG
 				try:
 					v = zkfunc(self.session.handle, self.path, handler)
 				except zookeeper.NoNodeException:
-					self._rewatch()
+					print t
+					if t & pettingzoo.testing.TESTING_FLAG:
+						v = None
+						for watch in self.session.watches.watches(self.key):
+							watch._notify(v)
+					else:
+						self._rewatch()
 				else:
 					for watch in self.session.watches.watches(self.key):
 						watch._notify(v)

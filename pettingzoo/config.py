@@ -4,7 +4,7 @@ import zookeeper
 import yaml
 import random
 import sys
-import config as conf
+import k.config
 
 CONFIG_PATH = "/config"
 
@@ -140,7 +140,7 @@ class DistributedConfig(object):
 
 	def _load_file_config(self, service_class, service_name, callback=None):
 		path = '/'.join([service_class, service_name])
-		return conf.KnewtonConfig().fetch_config(path)
+		return k.config.KnewtonConfig().fetch_config(path)
 
 	def _child_callback(self, children):
 		path = children.path
