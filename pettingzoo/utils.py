@@ -84,3 +84,19 @@ def configure_logger(config_file=None, **kwargs):
 def get_logger():
 	return logging.getLogger("pettingzoo")
 
+def min_predecessor(children, position):
+	''' 
+	Loops through predecessors of a node and returns smallest predecessor id
+	Parameters:
+	children - iterable object containing strings with the zookeeper id 
+	position - id of the node whose predecessor you're looking for
+	Returns:
+	id - int, smallest id that is less than the id provided
+	'''
+	#TODO check child node exists
+	predecessor = -1
+	for child in children:
+		counter = counter_value(child)
+		if  predecessor < counter < position:
+			predecessor = counter
+	return predecessor 
