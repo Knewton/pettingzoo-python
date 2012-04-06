@@ -3,7 +3,6 @@ import zookeeper
 import threading
 import sys
 import traceback
-import pettingzoo.testing
 
 def connect_to_zk(servers, logging=None):
 	"""
@@ -20,103 +19,37 @@ def connect_to_zk(servers, logging=None):
 	conn.watches.lock = threading.RLock()
 	return conn
 
-class Exists(zc.zk.NodeInfo):
+def counter_path(path, counter):
 	"""
-	This class is implementing the zc.zk
+	Takes in a path and a counter and returns a zookeeper appropriate path.
+	Parameters:
+		path - The full path before the counter
+		counter - An integer used as the counter
+	Returns:
+		a zookeeper path with a counter.
 	"""
-	event_type = zookeeper.DELETED_EVENT
+	return "%s%010d" % (path, counter)
 
-	def __init__(self, session, path, callbacks=[]):
-		zc.zk.ZooKeeper._ZooKeeper__zkfuncs[zookeeper.DELETED_EVENT] = 'exists'
-		self.session = session
-		self.path = path
-		self.callbacks = callbacks
-		self._set_watch()
+def counter_value(path):
+	"""
+	Converts a zookeeper path with a counter into an integer of that counter
+	Parameters:
+		path - a zookeeper path
+	Returns:
+		the integer encoded in the last 10 characters.
+	"""
+	return int(path[-10:])
 
-	def _set_watch(self):
-		"""
-		Internal function, not intended for external calling
-		"""
-		self.key = (self.event_type, self.path)
-		if self.session.watches.add(self.key, self):
-			try:
-				self._watch_key()
-			except zookeeper.ConnectionLossException:
-				watches = set(self.session.watches.pop(key))
-				for w in watches:
-					w._deleted()
-				if self.session in watches:
-					watches.remove(self.session)
-				if watches:
-					zc.zk.logger.critical('lost watches %s' % watches)
-				raise
-			pass
-		else:
-			self._notify(self.session.exists(session.handle, self.path))
-
-	def _watch_key(self):
-		"""
-		Internal function, not intended for external calling
-		"""
-		zkfunc = getattr(zookeeper, 'exists')
-		def handler(h, t, state, p, reraise=False):
-			if state != zookeeper.CONNECTED_STATE:
-				zc.zk.logger.warning("Node watcher event %r with non-connected state, %r", t, state)
-				return
-			try:
-				assert h == self.session.handle
-				assert state == zookeeper.CONNECTED_STATE
-				assert p == self.path
-				if self.key not in self.session.watches:
-					return
-				assert t == self.event_type or t == self.event_type | pettingzoo.testing.TESTING_FLAG
-				try:
-					v = zkfunc(self.session.handle, self.path, handler)
-				except zookeeper.NoNodeException:
-					print t
-					if t & pettingzoo.testing.TESTING_FLAG:
-						v = None
-						for watch in self.session.watches.watches(self.key):
-							watch._notify(v)
-					else:
-						self._rewatch()
-				else:
-					for watch in self.session.watches.watches(self.key):
-						watch._notify(v)
-			except:
-				exc_class, exc, tb = sys.exc_info()
-				sys.stderr.write(str(exc_class) + "\n")
-				traceback.print_tb(tb)
-				zc.zk.logger.exception("%s(%s) handler failed", 'exists', self.path)
-				if reraise:
-					raise exc_class, exc, tb
-		handler(self.session.handle, self.event_type, self.session.state, self.path, True)
-
-	def _rewatch(self):
-		"""
-		Internal function, not intended for external calling
-		"""
-		for watch in self.session.watches.pop(key):
-			try:
-				self.path = self.session.resolve(self.path)
-			except (zookeeper.NoNodeException, zc.zk.LinkLoop):
-				zc.zk.logger.exception("%s path went away", watch)
-				watch._deleted()
-			else:
-				self._set_watch()
-
-	def _notify(self, data):
-		"""
-		Internal function, not intended for external calling
-		"""
-		if data == None:
-			for callback in list(self.callbacks):
-				try:
-					callback(self)
-				except Exception, v:
-					self.callbacks.remove(callback)
-					if isinstance(v, zc.zk.CancelWatch):
-						zc.zk.logger.debug("cancelled watch(%r, %r)", self, callback)
-					else:
-						zc.zk.logger.exception("watch(%r, %r)", self, callback)
+def max_counter(children):
+	"""
+	Loops through a children iterator and returns the maximum counter id.
+	Parameters:
+		children: an iteratable object containing strings with the zookeeper id standard
+	Returns:
+		Maximum id
+	"""
+	numbers = [-1]
+	for child in children:
+		numbers.append(counter_value(child))
+	return max(numbers)
 

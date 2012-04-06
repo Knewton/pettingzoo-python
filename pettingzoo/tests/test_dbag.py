@@ -132,11 +132,11 @@ class DbagTests(unittest.TestCase):
 		self.assertTrue(self.touched)
 
 	def test_max_counter(self):
-		result = max_counter(["aasfgsfgsdfgsdfg-0000001001"])
+		result = pettingzoo.utils.max_counter(["aasfgsfgsdfgsdfg-0000001001"])
 		self.assertEquals(result, 1001)
 
 	def test_counter_path(self):
-		result = counter_path("aasfgsfgsdfgsdfg-", 1001)
+		result = pettingzoo.utils.counter_path("aasfgsfgsdfgsdfg-", 1001)
 		self.assertEquals(result, "aasfgsfgsdfgsdfg-0000001001")
 
 	def test_id_to_item_path(self):

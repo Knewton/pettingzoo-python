@@ -4,6 +4,7 @@ import multiprocessing
 import sys
 import traceback
 import pettingzoo.utils
+import pettingzoo.exists
 
 ITEM_PATH = "/item";
 TOKEN_PATH = "/token";
@@ -21,7 +22,7 @@ class DistributedBag(object):
 		self.delete_callbacks = []
 		self.deletion_handlers = {}
 		self.children = self.connection.children(path + TOKEN_PATH)
-		self.max_token = max_counter(self.children)
+		self.max_token = pettingzoo.utils.max_counter(self.children)
 		self._cleanup_tokens(self.children, self.max_token)
 		self.children(self._process_children_changed)
 		self._populate_ids()
@@ -29,11 +30,11 @@ class DistributedBag(object):
 	def _populate_ids(self):
 		ichildren = self.connection.children(self.path + ITEM_PATH)
 		for child in ichildren:
-			self._on_new_id(counter_value(child))
+			self._on_new_id(pettingzoo.utils.counter_value(child))
 
 	def _cleanup_tokens(self, children, max_token):
 		for child in children:
-			token_id = counter_value(child)
+			token_id = pettingzoo.utils.counter_value(child)
 			if token_id < max_token:
 				try:
 					self.connection.adelete(id_to_token_path(self.path, token_id))
@@ -53,7 +54,7 @@ class DistributedBag(object):
 		if ephemeral:
 			flags = zookeeper.EPHEMERAL | zookeeper.SEQUENCE
 		newpath = self.connection.create(self.path + ITEM_PATH + ITEM_PATH, data, zc.zk.OPEN_ACL_UNSAFE, flags)
-		item_id = counter_value(newpath)
+		item_id = pettingzoo.utils.counter_value(newpath)
 		self.connection.acreate(id_to_token_path(self.path, item_id), "", zc.zk.OPEN_ACL_UNSAFE)
 		if item_id > 0:
 			children = self.connection.children(self.path + TOKEN_PATH)
@@ -131,13 +132,13 @@ class DistributedBag(object):
 
 	def _on_new_id(self, new_id):
 		"""
-		Called intenally when an item is added.  Not intended for external use.
+		Called internally when an item is added.  Not intended for external use.
 		"""
 		try:
 			path = id_to_item_path(self.path, new_id)
 			with self.write_lock:
 				self.ids.add(new_id)
-				exists = pettingzoo.utils.Exists(self.connection, path, [self._process_deleted])
+				exists = pettingzoo.exists.Exists(self.connection, path, [self._process_deleted])
 				self.deletion_handlers[new_id] = exists
 				for callback in self.add_callbacks:
 					callback(self, new_id)
@@ -152,7 +153,7 @@ class DistributedBag(object):
 		Callback used for Children object.  Not intended for external use.
 		"""
 		try:
-			new_max = max_counter(children)
+			new_max = pettingzoo.utils.max_counter(children)
 			with self.write_lock:
 				while self.max_token < new_max:
 					self.max_token += 1
@@ -167,7 +168,7 @@ class DistributedBag(object):
 		"""
 		Callback used for Exists object.  Not intended for external use.
 		"""
-		del_id = counter_value(node.path)
+		del_id = pettingzoo.utils.counter_value(node.path)
 		self._on_delete_id(del_id)
 		with self.write_lock:
 			del self.deletion_handlers[del_id]
@@ -181,7 +182,7 @@ def id_to_item_path(path, item_id):
 	Returns:
 		znode path of node representing item
 	"""
-	return counter_path(path + ITEM_PATH + ITEM_PATH, item_id)
+	return pettingzoo.utils.counter_path(path + ITEM_PATH + ITEM_PATH, item_id)
 
 def id_to_token_path(path, item_id):
 	"""
@@ -191,39 +192,4 @@ def id_to_token_path(path, item_id):
 	Returns:
 		znode path of node representing item
 	"""
-	return counter_path(path + TOKEN_PATH + TOKEN_PATH, item_id)
-
-def counter_path(path, counter):
-	"""
-	Takes in a path and a counter and returns a zookeeper appropriate path.
-	Parameters:
-		path - The full path before the counter
-		counter - An integer used as the counter
-	Returns:
-		a zookeeper path with a counter.
-	"""
-	return "%s%010d" % (path, counter)
-
-def counter_value(path):
-	"""
-	Converts a zookeeper path with a counter into an integer of that counter
-	Parameters:
-		path - a zookeeper path
-	Returns:
-		the integer encoded in the last 10 characters.
-	"""
-	return int(path[-10:])
-
-def max_counter(children):
-	"""
-	Loops through a children iterator and returns the maximum counter id.
-	Parameters:
-		children: an iteratable object containing strings with the zookeeper id standard
-	Returns:
-		Maximum id
-	"""
-	numbers = [-1]
-	for child in children:
-		numbers.append(counter_value(child))
-	return max(numbers)
-
+	return pettingzoo.utils.counter_path(path + TOKEN_PATH + TOKEN_PATH, item_id)

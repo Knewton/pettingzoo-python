@@ -1,5 +1,6 @@
 import unittest
 from pettingzoo.utils import *
+import pettingzoo.exists
 import sys
 
 class ExistsTests(unittest.TestCase):
@@ -22,7 +23,7 @@ class ExistsTests(unittest.TestCase):
 			self.touched = True
 		test_path = self.path + "/exists"
 		self.connection.create_recursive(test_path, "", acl=zc.zk.OPEN_ACL_UNSAFE)
-		exists = Exists(self.connection, test_path)
+		exists = pettingzoo.exists.Exists(self.connection, test_path)
 		exists(cb)
 		self.connection.delete_recursive(test_path)
 		self.assertTrue(self.touched)
