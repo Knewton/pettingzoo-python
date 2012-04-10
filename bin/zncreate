@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# vim:filetype=python
 import zc.zk
 import sys
 from optparse import OptionParser

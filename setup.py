@@ -2,15 +2,15 @@
 from setuptools import setup, Command
 
 class PyTest(Command):
-    user_options = []
-    def initialize_options(self):
-        pass
-    def finalize_options(self):
-        pass
-    def run(self):
-        import sys,subprocess
-        errno = subprocess.call([sys.executable, 'runtests.py'])
-        raise SystemExit(errno)
+	user_options = []
+	def initialize_options(self):
+		pass
+	def finalize_options(self):
+		pass
+	def run(self):
+		import sys,subprocess
+		errno = subprocess.call([sys.executable, 'runtests.py'])
+		raise SystemExit(errno)
 
 def get_version():
 	build_version = 1
@@ -24,7 +24,8 @@ setup(
 	author_email='devon@knewton.com',
 	license = 'Proprietary',
 	packages=['pettingzoo'],
-    cmdclass = {'test': PyTest},
+	cmdclass = {'test': PyTest},
+	scripts = ['bin/zncreate', 'bin/zndelete'],
 	install_requires=[
 		'k.config>=0.1',
 		'zc.zk>=0.7.0',
