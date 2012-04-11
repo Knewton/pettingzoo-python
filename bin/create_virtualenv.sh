@@ -62,7 +62,7 @@ sed -i '/^\s*#/d' $requirements
 # remove blank lines
 sed -i '/^\s*$/d' $requirements
 if [ -s $requirements ]; then
-	pip install -r $requirements -i https://pypi.knewton.net/mirror
+	pip install -r $requirements --extra-index-url=https://pypi.knewton.net/simple
 fi
 rm -f $requirements
 deactivate
