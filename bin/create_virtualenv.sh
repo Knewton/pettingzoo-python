@@ -24,10 +24,12 @@ venvdir="/opt/virtualenvs"
 appdir=$(cd "$(dirname $0)/..";pwd)
 cfgdir=$appdir/config
 application=$(basename "$appdir")
+python_bin="python2"
 destroy=true
-while getopts a:hk opt; do
+while getopts a:p:hk opt; do
 	case "$opt" in
 		a)  application="$OPTARG";;
+		p)  python_bin="$OPTARG";;
 		h)  usage;;
 		k)  destroy=false;;
 		\?) usage;;
@@ -42,7 +44,7 @@ if $destroy; then
 fi
 
 if [ ! -e $application ]; then
-	virtualenv --never-download --system-site-packages --distribute --python=python2 $application
+	virtualenv --never-download --system-site-packages --distribute --python=$python_bin $application
 fi
 
 source $application/bin/activate
@@ -62,7 +64,7 @@ sed -i '/^\s*#/d' $requirements
 # remove blank lines
 sed -i '/^\s*$/d' $requirements
 if [ -s $requirements ]; then
-	pip install -r $requirements --extra-index-url=https://pypi.knewton.net/simple
+	pip install --requirement $requirements --index-url https://pypi.knewton.net/simple
 fi
 rm -f $requirements
 deactivate

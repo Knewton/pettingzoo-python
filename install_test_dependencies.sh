@@ -1,9 +1,10 @@
 #!/bin/bash
 
+# Install test and system-level runtime dependencies here.
+
+set -e
+
 sudo apt-get install -y python-setuptools
-sudo easy_install pytest
-sudo easy_install coverage
-sudo easy_install pytest_cov
-sudo easy_install netifaces
-#zookeeper
-#zc.zk
+sudo pip install pytest
+sudo pip install coverage
+sudo pip install pytest_cov

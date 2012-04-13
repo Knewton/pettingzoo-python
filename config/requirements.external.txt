@@ -1,0 +1,4 @@
+netifaces>=0.8,<0.9
+zc.zk>=0.7.0
+zkpython>=0.4
+

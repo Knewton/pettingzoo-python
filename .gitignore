@@ -3,12 +3,35 @@
 
 # swap files
 *.swp
+*.swo
+*~
+*#
 
-# py.test coverage files
+# py.test artifacts
+__pycache__
+
+# log files
+*.log
+
+# coverage files
 .coverage
+htmlcov
 
-# build schmutz
-build/
+# ide files
+.komodoproject
+.komodotools
+.classpath
+.project
+.pydevproject
+.settings
+.idea
+*.iml
+*.ipr
+*.iws
+
+# build files
+target
 dist/
-htmlcov/
 pettingzoo.egg-info/
+build/
+MANIFEST
