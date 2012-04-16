@@ -21,8 +21,8 @@ else
 fi
 
 venvdir="/opt/virtualenvs"
-appdir=$(cd "$(dirname $0)/..";pwd)
-cfgdir=$appdir/config
+appdir="$(cd "$(dirname $0)/..";pwd)"
+cfgdir="$appdir/config"
 application=$(basename "$appdir")
 python_bin="python2"
 destroy=true
@@ -37,7 +37,7 @@ while getopts a:p:hk opt; do
 done
 shift `expr $OPTIND - 1`
 
-cd $venvdir
+cd "$venvdir"
 
 if $destroy; then
 	rm -rf $application
@@ -67,4 +67,16 @@ if [ -s $requirements ]; then
 	pip install --requirement $requirements --index-url https://pypi.knewton.net/simple
 fi
 rm -f $requirements
+
+# libraries under development
+if [ -e "$cfgdir/requirements.dev.txt" ]; then
+	tmpfile=$(mktemp)
+	grep -v '^\s*$' "$cfgdir/requirements.dev.txt" | grep -v '^\s*#' > $tmpfile || true
+	while read path; do
+		pushd $path > /dev/null
+		./setup.py install
+		popd > /dev/null
+	done < $tmpfile
+fi
+
 deactivate
