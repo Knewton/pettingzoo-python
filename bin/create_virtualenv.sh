@@ -2,9 +2,6 @@
 
 set -e
 
-# TODO: Use only the internal pypi (apache) server.
-# TODO: Find a way to determine if the environment should be regenerated.
-
 function usage {
 	echo >&2 "usage: $0 [-k] [-a application]"
 	echo >&2 "    -k  Keep the virtualenv; don't destroy it, if it exists."
@@ -74,7 +71,9 @@ if [ -e "$cfgdir/requirements.dev.txt" ]; then
 	grep -v '^\s*$' "$cfgdir/requirements.dev.txt" | grep -v '^\s*#' > $tmpfile || true
 	while read path; do
 		pushd $path > /dev/null
-		./setup.py install
+		rm -rf dist
+		./setup.py sdist
+		pip install dist/*
 		popd > /dev/null
 	done < $tmpfile
 fi
