@@ -1,14 +1,18 @@
 import unittest
-from pettingzoo.utils import *
+import zookeeper
+from pettingzoo.utils import connect_to_zk
 import pettingzoo.exists
-import sys
+import zc
+from pettingzoo.dbag import DistributedBag
+
+ZOO_CONF = "/etc/knewton/zookeeper/platform.yml"
+
+DO_MOCK = True
 
 class ExistsTests(unittest.TestCase):
 	def setUp(self):
-		self.mock = True
 		self.conn_string = '127.0.0.1:2181'
-		if self.mock:
-			import zc.zk.testing
+		if DO_MOCK:
 			import pettingzoo.testing
 			zc.zk.testing.setUp(self, connection_string=self.conn_string)
 			zc.zk.testing.ZooKeeper.create = pettingzoo.testing.create
@@ -28,6 +32,15 @@ class ExistsTests(unittest.TestCase):
 		self.connection.delete_recursive(test_path)
 		self.assertTrue(self.touched)
 
+	def test_shared_connection(self):
+		if not DO_MOCK:
+			DistributedBag(
+				self.connection, '/altnode/organ/testorgan/substrate/subscription')
+			DistributedBag(
+				self.connection, '/altnode/organ/testorgan/substrate/subscription')
+		else:
+			print "Skipped: test_shared_connection requires a running ZK instance"
+
 	def tearDown(self):
 		self.connection.close()
 		self.connection = connect_to_zk('127.0.0.1:2181')
@@ -37,6 +50,6 @@ class ExistsTests(unittest.TestCase):
 			pass # does not exist
 		finally:
 			self.connection.close()
-		if self.mock:
+		if DO_MOCK:
 			import zc.zk.testing
 			zc.zk.testing.tearDown(self)

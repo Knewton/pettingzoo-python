@@ -27,7 +27,7 @@ class Exists(zc.zk.NodeInfo):
 			try:
 				self._watch_key()
 			except zookeeper.ConnectionLossException:
-				watches = set(self.session.watches.pop(key))
+				watches = set(self.session.watches.pop(self.key))
 				for w in watches:
 					w._deleted()
 				if self.session in watches:
@@ -37,7 +37,7 @@ class Exists(zc.zk.NodeInfo):
 				raise
 			pass
 		else:
-			self._notify(self.session.exists(session.handle, self.path))
+			self._notify(self.session.exists(self.path))
 
 	def _watch_key(self):
 		"""
@@ -80,7 +80,8 @@ class Exists(zc.zk.NodeInfo):
 		"""
 		Internal function, not intended for external calling
 		"""
-		for watch in self.session.watches.pop(key):
+		#FIXME: this is not being exercised in tests
+		for watch in self.session.watches.pop(self.key):
 			try:
 				self.path = self.session.resolve(self.path)
 			except (zookeeper.NoNodeException, zc.zk.LinkLoop):
