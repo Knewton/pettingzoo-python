@@ -15,6 +15,8 @@ class PyTest(Command):
 		raise SystemExit(errno)
 
 def get_version():
+	"""build_version is replaced with the current build number
+	as part of the jenkins build job"""
 	build_version = 1
 	return build_version
 
