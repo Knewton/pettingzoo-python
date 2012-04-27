@@ -105,14 +105,14 @@ class DistributedConfig(object):
 		cached = self._get_config_from_cache(path, callback)
 		if cached:
 			return cached
-		config = self.__load_znodes(path)
+		config = self._load_znodes(path)
 		if config:
 			return config
 		config = self._load_file_config(service_class, service_name)
 		self._store_config_in_cache(path, config)
 		return config
 
-	def __load_znodes(self, path, add_callback=True):
+	def _load_znodes(self, path, add_callback=True):
 		if self.connection.exists(path):
 			children = self.connection.children(path)
 			if add_callback:
@@ -145,7 +145,7 @@ class DistributedConfig(object):
 	def _child_callback(self, children):
 		path = children.path
 		service_class, service_name = _znode_to_class_and_name(path)
-		config = self.__load_znodes(path, add_callback=False)
+		config = self._load_znodes(path, add_callback=False)
 		callbacks = self.callbacks.get(path, [])
 		for callback in callbacks:
 			callback(path, config)
@@ -184,14 +184,14 @@ class DistributedMultiConfig(DistributedConfig):
 		cached = self._get_config_from_cache(path, callback)
 		if cached:
 			return cached
-		config = self.__load_znodes(path)
+		config = self._load_znodes(path)
 		if config:
 			return config
 		config = [('file', self._load_file_config(service_class, service_name))]
 		self._store_config_in_cache(path, config)
 		return config
 
-	def __load_znodes(self, path, add_callback=True):
+	def _load_znodes(self, path, add_callback=True):
 		if self.connection.exists(path):
 			children = self.connection.children(path)
 			if add_callback:

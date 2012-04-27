@@ -7,7 +7,3 @@ set -e
 if ! dpkg -l python-setuptools > /dev/null 2>&1; then
 	sudo apt-get install -y python-setuptools
 fi
-
-sudo pip install coverage
-sudo pip install pytest
-sudo pip install pytest_cov
