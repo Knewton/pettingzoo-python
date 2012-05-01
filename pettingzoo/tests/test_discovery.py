@@ -15,7 +15,7 @@ class DiscoveryTests(unittest.TestCase):
 		self.connection = connect_to_zk(self.conn_string)
 		self.path = '/test_discovery'
 		pettingzoo.discovery.CONFIG_PATH = self.path
-		self.sample = {'metadata': {'service_class': 'mysql', 'version': 1.0}, 'username': 'reports', 'host': 'localhost', 'port': 3306, 'password': 'reports', 'database': 'reports', 'encoding': 'utf8'}
+		self.sample = {'header': {'service_class': 'mysql', 'metadata': {'version': 1.0}}, 'username': 'reports', 'host': 'localhost', 'port': 3306, 'password': 'reports', 'database': 'reports', 'encoding': 'utf8'}
 
 	def test_write_distributed_config(self):
 		pettingzoo.discovery.write_distributed_config(self.connection, 'mysql', 'reports', self.sample, '127.0.0.1')
@@ -59,7 +59,7 @@ class DistributedDiscoveryTests(unittest.TestCase):
 		self.connection = connect_to_zk(self.conn_string)
 		self.path = '/test_discovery'
 		pettingzoo.discovery.CONFIG_PATH = self.path
-		self.sample = {'metadata': {'service_class': 'mysql', 'version': 1.0}, 'username': 'reports', 'host': 'localhost', 'port': 3306, 'password': 'reports', 'database': 'reports', 'encoding': 'utf8'}
+		self.sample = {'header': {'service_class': 'mysql', 'metadata': {'version': 1.0}}, 'username': 'reports', 'host': 'localhost', 'port': 3306, 'password': 'reports', 'database': 'reports', 'encoding': 'utf8'}
 
 	def test_distributed_config_dne(self):
 		dc = pettingzoo.discovery.DistributedDiscovery(self.connection)
@@ -90,7 +90,7 @@ class DistributedDiscoveryTests(unittest.TestCase):
 		pettingzoo.discovery.write_distributed_config(self.connection, 'mysql', 'reports', self.sample, '127.0.0.1')
 		dc = pettingzoo.discovery.DistributedDiscovery(self.connection)
 		config = dc.load_config('mysql', 'reports', callback=cb)
-		sample2 = {'metadata': {'service_class': 'mysql', 'version': 1.0}, 'username': 'reports', 'host': 'notlocalhost', 'port': 3306, 'password': 'reports', 'database': 'reports', 'encoding': 'utf8'}
+		sample2 = {'header': {'service_class': 'mysql', 'metadata': {'version': 1.0}}, 'username': 'reports', 'host': 'notlocalhost', 'port': 3306, 'password': 'reports', 'database': 'reports', 'encoding': 'utf8'}
 		pettingzoo.discovery.write_distributed_config(self.connection, 'mysql', 'reports', sample2, '127.0.0.2')
 		time.sleep(.1)
 		self.assertTrue(self.touched)
@@ -98,18 +98,20 @@ class DistributedDiscoveryTests(unittest.TestCase):
 		config = self.cbconfig
 		self.assertTrue(config['host'] in ['localhost', 'notlocalhost'])
 		mismatch_keys = [key for key in self.sample if not key in config or self.sample[key] != config[key]]
+		print mismatch_keys
 		for key in mismatch_keys:
-			self.assertTrue(key in ['host', 'metadata'])
+			self.assertTrue(key in ['host', 'header'])
 
 	def test_load_config_with_multiple_entries(self):
 		pettingzoo.discovery.write_distributed_config(self.connection, 'mysql', 'reports', self.sample, '127.0.0.1')
-		sample2 = {'metadata': {'service_class': 'mysql', 'version': 1.0}, 'username': 'reports', 'host': 'notlocalhost', 'port': 3306, 'password': 'reports', 'database': 'reports', 'encoding': 'utf8'}
+		sample2 = {'header': {'service_class': 'mysql', 'metadata': {'version': 1.0}}, 'username': 'reports', 'host': 'notlocalhost', 'port': 3306, 'password': 'reports', 'database': 'reports', 'encoding': 'utf8'}
 		pettingzoo.discovery.write_distributed_config(self.connection, 'mysql', 'reports', sample2, '127.0.0.2')
 		dc = pettingzoo.discovery.DistributedDiscovery(self.connection)
 		config = dc.load_config('mysql', 'reports')
 		mismatch_keys = [key for key in self.sample if not key in config or self.sample[key] != config[key]]
+		print mismatch_keys
 		for key in mismatch_keys:
-			self.assertTrue(key in ['host', 'metadata'])
+			self.assertTrue(key in ['host', 'header'])
 
 	def tearDown(self):
 		pettingzoo.discovery.CONFIG_PATH = '/discovery'
@@ -131,8 +133,8 @@ class DistributedMultiDiscovery(unittest.TestCase):
 		self.connection = connect_to_zk(self.conn_string)
 		self.path = '/test_discovery'
 		pettingzoo.discovery.CONFIG_PATH = self.path
-		self.sample = {'metadata': {'service_class': 'mysql', 'version': 1.0}, 'username': 'reports', 'host': 'localhost', 'port': 3306, 'password': 'reports', 'database': 'reports', 'encoding': 'utf8'}
-		self.sample2 = {'metadata': {'service_class': 'mysql', 'version': 1.0}, 'username': 'reports', 'host': 'notlocalhost', 'port': 3306, 'password': 'reports', 'database': 'reports', 'encoding': 'utf8'}
+		self.sample = {'header': {'service_class': 'mysql', 'metadata': {'version': 1.0}}, 'username': 'reports', 'host': 'localhost', 'port': 3306, 'password': 'reports', 'database': 'reports', 'encoding': 'utf8'}
+		self.sample2 = {'header': {'service_class': 'mysql', 'metadata': {'version': 1.0}}, 'username': 'reports', 'host': 'notlocalhost', 'port': 3306, 'password': 'reports', 'database': 'reports', 'encoding': 'utf8'}
 
 	def test_config_dne(self):
 		dmc = pettingzoo.discovery.DistributedMultiDiscovery(self.connection)
@@ -156,7 +158,7 @@ class DistributedMultiDiscovery(unittest.TestCase):
 		ips = ['127.0.0.1', '127.0.0.2']
 		for config in configs:
 			mismatch_keys = [key for key in self.sample if not key in config or self.sample[key] != config[key]]
-			ips.remove(config['metadata']['key'])
+			ips.remove(config['header']['metadata']['key'])
 		self.assertEquals(len(ips), 0)
 
 	def tearDown(self):
@@ -179,8 +181,8 @@ class FileFallbackTests(unittest.TestCase):
 		self.connection = connect_to_zk(self.conn_string)
 		self.path = '/test_discovery'
 		pettingzoo.discovery.CONFIG_PATH = self.path
-		self.sample = {'metadata': {'service_class': 'mysql', 'version': 1.0}, 'username': 'reports', 'host': 'localhost', 'port': 3306, 'password': 'reports', 'database': 'reports', 'encoding': 'utf8'}
-		self.sample2 = {'metadata': {'service_class': 'mysql', 'version': 1.0}, 'username': 'reports', 'host': 'notlocalhost', 'port': 3306, 'password': 'reports', 'database': 'reports', 'encoding': 'utf8'}
+		self.sample = {'header': {'service_class': 'mysql', 'metadata': {'version': 1.0}}, 'username': 'reports', 'host': 'localhost', 'port': 3306, 'password': 'reports', 'database': 'reports', 'encoding': 'utf8'}
+		self.sample2 = {'header': {'service_class': 'mysql', 'metadata': {'version': 1.0}}, 'username': 'reports', 'host': 'notlocalhost', 'port': 3306, 'password': 'reports', 'database': 'reports', 'encoding': 'utf8'}
 		k.config.KnewtonConfig = k.config.KnewtonConfigTest()
 		k.config.KnewtonConfig().add_config(self.sample, 'mysql/exist')
 		self.list_sample = {'server_list': [self.sample]}

@@ -106,20 +106,45 @@ class DistributedDiscovery(object):
 		cached = self._get_config_from_cache(path, callback)
 		if cached:
 			get_logger().info("DistributedConfig.load_config %s/%s (cached)" % (service_class, service_name))
-			rconfig = set_metadata(cached[1], service_class, service_name, cached[0])
+			rconfig = set_metadata(
+				validate_config(cached[1], service_class), service_class, service_name, cached[0])
 			get_logger().debug("%s" % (rconfig))
 			return rconfig
 		config = self._load_znodes(path)
 		if config:
 			get_logger().info("DistributedConfig.load_config %s/%s (zookeeper)" % (service_class, service_name))
-			rconfig = set_metadata(config[1], service_class, service_name, config[0])
+			rconfig = set_metadata(
+				validate_config(config[1], service_class), service_class, service_name, config[0])
 			get_logger().debug("%s" % (rconfig))
 			return rconfig
 		config = self._load_file_config(service_class, service_name)
 		get_logger().info("DistributedConfig.load_config %s/%s (file)" % (service_class, service_name))
-		rconfig = set_metadata(config, service_class, service_name)
+		rconfig = set_metadata(
+			validate_config(config, service_class), service_class, service_name)
 		get_logger().debug("%s" % (rconfig))
 		return rconfig
+
+	def get_service_classes(self):
+		"""
+		Returns a list of current service classes.
+		Returns:
+			a list of service classes as strings
+		"""
+		retarr = []
+		if self.connection.exists(CONFIG_PATH):
+			children = self.connection.children(CONFIG_PATH)
+			for child in children:
+				retarr.append(child)
+		return retarr
+
+	def get_service_names(self, service_class):
+		retarr = []
+		path = '/'.join([CONFIG_PATH, service_class])
+		if self.connection.exists(path):
+			children = self.connection.children(path)
+			for child in children:
+				retarr.append(child)
+		return retarr
 
 	def _load_znodes(self, path, add_callback=True):
 		get_logger().info("DistributedConfig._load_znodes: %s. Callback: %s" % (path, add_callback))
@@ -206,18 +231,27 @@ class DistributedMultiDiscovery(DistributedDiscovery):
 		cached = self._get_config_from_cache(path, callback)
 		if cached:
 			get_logger().info("DistributedMultiConfig.load_config: %s/%s (cached)" % (service_class, service_name))
-			rconfig = [conf[1] for conf in cached]
+			rconfig = [
+				set_metadata(
+					validate_config(conf[1], service_class), service_class, service_name, conf[0])
+						for conf in cached]
 			get_logger().debug("%s" % (rconfig))
 			return rconfig
 		config = self._load_znodes(path)
 		if config:
 			get_logger().info("DistributedMultiConfig.load_config: %s/%s (zookeeper)" % (service_class, service_name))
-			rconfig = [conf[1] for conf in config]
+			rconfig = [
+				set_metadata(
+					validate_config(conf[1], service_class), service_class, service_name, conf[0])
+						for conf in config]
 			get_logger().debug("%s" % (rconfig))
 			return rconfig
 		config = self._load_file_config(service_class, service_name)
 		get_logger().info("DistributedMultiConfig.load_config: %s/%s (file)" % (service_class, service_name))
-		rconfig = [set_metadata(c, service_class, service_name) for c in config]
+		rconfig = [
+			set_metadata(
+				validate_config(c, service_class), service_class, service_name)
+					for c in config]
 		get_logger().debug("%s" % (rconfig))
 		return rconfig
 
@@ -265,7 +299,8 @@ def write_distributed_config(connection, service_class, service_name, config, ke
 		key = _get_local_ip(interface)
 	path = _znode_path(service_class, service_name)
 	connection.create_recursive(path, "", acl=zc.zk.OPEN_ACL_UNSAFE)
-	set_metadata(config, service_class, service_name, key)
+	config = set_metadata(
+		validate_config(config, service_class), service_class, service_name, key)
 	payload = yaml.dump(config)
 	flags = 0
 	if ephemeral:
@@ -282,12 +317,15 @@ def remove_stale_config(connection, service_class, service_name, key):
 	get_logger().info("remove_stale_config: %s/%s/%s" % (service_class, service_name, key))
 	connection.delete(_znode_path(service_class, service_name, key))
 
+def validate_config(config, service_class):
+	header = config.setdefault('header', {})
+	if service_class != header.get('service_class'):
+		raise Exception("Cannot store config hash of type %s in service class %s: %s" % (header.get('service_class'), service_class, config))
+	return config
+
 def set_metadata(config, service_class, service_name, key=None):
-	metadata = config.setdefault('metadata', {})
-	if metadata.has_key('service_class'):
-		if service_class != metadata['service_class']:
-			raise Exception("Cannot store config hash of type %s in service class %s" % (metadata['service_class'], service_class))
-	metadata['service_class'] = service_class
+	header = config.setdefault('header', {})
+	metadata = header.setdefault('metadata', {})
 	metadata['service_name'] = service_name
 	if key != None:
 		metadata['key'] = key

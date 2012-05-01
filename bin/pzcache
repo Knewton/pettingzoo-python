@@ -1,0 +1,43 @@
+#!/usr/bin/env python
+# vim:filetype=python
+import sys
+import os
+import pettingzoo.discovery
+import pettingzoo.utils
+import yaml
+from optparse import OptionParser
+
+def cache_files(server, path):
+	conn = pettingzoo.utils.connect_to_zk(server)
+	dmc = pettingzoo.discovery.DistributedMultiDiscovery(conn)
+	sclasses = dmc.get_service_classes()
+	topdirs = os.listdir(os.path.abspath(os.path.expanduser(path)))
+	for sclass in sclasses:
+		directory = os.path.join(os.path.abspath(os.path.expanduser(path)), sclass)
+		create_directory(directory)
+		snames = dmc.get_service_names(sclass)
+		file_list = os.listdir(path)
+		for sname in snames:
+			filename = os.path.join(os.path.abspath(os.path.expanduser(path)), sclass, sname + ".yml")
+			print sname + ".yml"
+			print file_list
+			with open(filename, "w") as yaml_file:
+				yaml_file.write(yaml.dump({'server_list': dmc.load_config(sclass, sname)}))
+
+def create_directory(path):
+	if not os.path.exists(path):
+		os.mkdir(path)
+
+def option_parser():
+	usage = '\n'.join(["usage: %prog [options] [path]", "  Caches discovery configs from zookeeper to a local directory."])
+	parser = OptionParser(usage=usage)
+	parser.add_option("-s", "--server", dest="server", default="127.0.0.1:2181", help="Zookeeper server to connect to. defaults to '127.0.0.1:2181")
+	parser.add_option("-d", "--dir", dest="dir", default="/etc/pettingzoo/discovery", help="Directory to write configs out to. defaults to /etc/pettingzoo/discovery")
+	return parser
+
+def main():
+	(options, args) = option_parser().parse_args()
+	cache_files(options.server, options.dir)
+
+if __name__ == "__main__":
+	main()
