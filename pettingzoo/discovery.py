@@ -6,7 +6,7 @@ import random
 import sys
 import k.config
 
-CONFIG_PATH = "/config"
+CONFIG_PATH = "/discovery"
 
 def _get_local_ip(interface='eth0'):
 	"""
@@ -47,19 +47,19 @@ def _znode_to_class_and_name(znode):
 	znode.pop(0)
 	return (znode[0], znode[1])
 
-def _znode_path(service_class, service_name, ip_address=None):
+def _znode_path(service_class, service_name, key=None):
 	"""
-	Local helper function that creates the znode pathusing the service_class/service_name
+	Local helper function that creates the znode path using the service_class/service_name
 	format that is utilized in this module
 	"""
 	znarr = [CONFIG_PATH, service_class, service_name]
-	if ip_address:
-		znarr.append(ip_address)
+	if key:
+		znarr.append(key)
 	return "/".join(znarr)
 
-class DistributedConfig(object):
+class DistributedDiscovery(object):
 	"""
-	DistributedConfig is a class that uses zookeeper to be able to manage the configs necessary for
+	DistributedDiscovery is a class that uses zookeeper to be able to manage the configs necessary for
 	systems to interact with one another.  It has a fallback scheme that does the following:
 	1) Try and find the config in zookeeper.
 	1.1) If there is more the one config for that service, select one at random and return it.
@@ -104,13 +104,12 @@ class DistributedConfig(object):
 		path = _znode_path(service_class, service_name)
 		cached = self._get_config_from_cache(path, callback)
 		if cached:
-			return cached
+			return set_metadata(cached[1], service_class, service_name, cached[0])
 		config = self._load_znodes(path)
 		if config:
-			return config
+			return set_metadata(config[1], service_class, service_name, config[0])
 		config = self._load_file_config(service_class, service_name)
-		self._store_config_in_cache(path, config)
-		return config
+		return set_metadata(config, service_class, service_name)
 
 	def _load_znodes(self, path, add_callback=True):
 		if self.connection.exists(path):
@@ -127,7 +126,7 @@ class DistributedConfig(object):
 
 	def load_config_via_path(self, path, callback=None):
 		"""
-		Returns a config using the fallback scheme for the DistributedConfig to select
+		Returns a config using the fallback scheme for the DistributedDiscovery to select
 		a config at random from the available configs for a particular service.
 		Note, the passed in path will work with any path that is compatible with
 		kenwton config.
@@ -140,7 +139,15 @@ class DistributedConfig(object):
 
 	def _load_file_config(self, service_class, service_name, callback=None):
 		path = '/'.join([service_class, service_name])
-		return k.config.KnewtonConfig().fetch_config(path)
+		config = k.config.KnewtonConfig().fetch_config(path)
+		if config.has_key('server_list'):
+			config_list = config['server_list']
+			print config_list
+			selectee = random.choice(config_list)
+			print selectee
+			return selectee
+		else:
+			return config
 
 	def _child_callback(self, children):
 		path = children.path
@@ -148,11 +155,12 @@ class DistributedConfig(object):
 		config = self._load_znodes(path, add_callback=False)
 		callbacks = self.callbacks.get(path, [])
 		for callback in callbacks:
-			callback(path, config)
+			callback(path, config[0], config[1])
 
-class DistributedMultiConfig(DistributedConfig):
+
+class DistributedMultiDiscovery(DistributedDiscovery):
 	"""
-	DistributedConfig is a class that uses zookeeper to be able to manage the configs necessary for
+	DistributedDiscovery is a class that uses zookeeper to be able to manage the configs necessary for
 	systems to interact with one another.  It has a fallback scheme that does the following:
 	1) Try and find the config in zookeeper.
 	1.1) Return all configs for that service.
@@ -169,7 +177,7 @@ class DistributedMultiConfig(DistributedConfig):
 	"""
 	def load_config(self, service_class, service_name, callback=None):
 		"""
-		Returns a config using the fallback scheme for DistributedConfig to select
+		Returns a config using the fallback scheme for DistributedDiscovery to select
 		a config at random from the available configs for a particular service.
 		Parameters:
 			service_class - the classification of the service (e.g. databases, memcached, etc)
@@ -183,13 +191,12 @@ class DistributedMultiConfig(DistributedConfig):
 		path = _znode_path(service_class, service_name)
 		cached = self._get_config_from_cache(path, callback)
 		if cached:
-			return cached
+			return [conf[1] for conf in cached]
 		config = self._load_znodes(path)
 		if config:
-			return config
-		config = [('file', self._load_file_config(service_class, service_name))]
-		self._store_config_in_cache(path, config)
-		return config
+			return [conf[1] for conf in config]
+		config = self._load_file_config(service_class, service_name)
+		return [set_metadata(c, service_class, service_name) for c in config]
 
 	def _load_znodes(self, path, add_callback=True):
 		if self.connection.exists(path):
@@ -207,20 +214,40 @@ class DistributedMultiConfig(DistributedConfig):
 				self._store_config_in_cache(path, config)
 				return config
 
-def write_distributed_config(connection, service_class, service_name, config, ip_address=None, interface='eth0', ephemeral=True):
-	if not ip_address:
-		ip_address = _get_local_ip(interface)
+	def _load_file_config(self, service_class, service_name, callback=None):
+		path = '/'.join([service_class, service_name])
+		config = k.config.KnewtonConfig().fetch_config(path)
+		if config.has_key('server_list'):
+			return config['server_list']
+		else:
+			return [config]
+
+def write_distributed_config(connection, service_class, service_name, config, key=None, interface='eth0', ephemeral=True):
+	if not key:
+		key = _get_local_ip(interface)
 	path = _znode_path(service_class, service_name)
 	connection.create_recursive(path, "", acl=zc.zk.OPEN_ACL_UNSAFE)
+	set_metadata(config, service_class, service_name, key)
 	payload = yaml.dump(config)
 	flags = 0
 	if ephemeral:
 		flags = zookeeper.EPHEMERAL
-	znode = _znode_path(service_class, service_name, ip_address)
+	znode = _znode_path(service_class, service_name, key)
 	if connection.exists(znode):
 		connection.delete(znode)
 	connection.create(znode, payload, zc.zk.OPEN_ACL_UNSAFE, flags)
+	return key
 
-def remove_stale_config(connection, service_class, service_name, ip_address):
-	connection.delete(_znode_path(service_class, service_name, ip_address))
+def remove_stale_config(connection, service_class, service_name, key):
+	connection.delete(_znode_path(service_class, service_name, key))
 
+def set_metadata(config, service_class, service_name, key=None):
+	metadata = config.setdefault('metadata', {})
+	if metadata.has_key('service_class'):
+		if service_class != metadata['service_class']:
+			raise Exception("Cannot store config hash of type %s in service class %s" % (metadata['service_class'], service_class))
+	metadata['service_class'] = service_class
+	metadata['service_name'] = service_name
+	if key != None:
+		metadata['key'] = key
+	return config

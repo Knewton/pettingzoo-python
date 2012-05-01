@@ -33,7 +33,7 @@ def parse_requirements(file_name):
 
 setup(
 	name="pettingzoo",
-	version="0.1.%s" % get_version(),
+	version="0.2.%s" % get_version(),
 	url = "https://wiki.knewton.net/index.php/Tech",
 	author="Devon Jones",
 	author_email="devon@knewton.com",

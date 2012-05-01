@@ -21,7 +21,7 @@ venvdir="/opt/virtualenvs"
 appdir="$(cd "$(dirname $0)/..";pwd)"
 cfgdir="$appdir/config"
 application=$(basename "$appdir")
-python_bin="python2"
+python_bin="python"
 destroy=true
 while getopts a:p:hk opt; do
 	case "$opt" in

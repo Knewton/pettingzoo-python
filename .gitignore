@@ -32,6 +32,6 @@ htmlcov
 # build files
 target
 dist/
-pettingzoo.egg-info/
+*.egg-info/
 build/
 MANIFEST
