@@ -3,6 +3,7 @@ import zookeeper
 import threading
 import sys
 import traceback
+import logging
 
 def connect_to_zk(servers, logging=None):
 	"""
@@ -52,4 +53,23 @@ def max_counter(children):
 	for child in children:
 		numbers.append(counter_value(child))
 	return max(numbers)
+
+def configure_logger(config_file=None, **kwargs):
+	if config_file:
+		logging.config.fileConfig(config_file)
+	else:
+		root = logging.getLogger()
+		if root.handlers:
+			for handler in root.handlers:
+				root.removeHandler(handler)
+		if not kwargs.has_key('level'):
+			kwargs['level'] = logging.DEBUG
+		if not kwargs.has_key('stream'):
+			kwargs['stream'] = sys.stderr
+		if not kwargs.has_key('format'):
+			kwargs['format'] = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+		logging.basicConfig(**kwargs)
+
+def get_logger():
+	return logging.getLogger("pettingzoo")
 

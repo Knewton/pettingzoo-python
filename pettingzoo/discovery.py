@@ -5,6 +5,7 @@ import yaml
 import random
 import sys
 import k.config
+from pettingzoo.utils import get_logger
 
 CONFIG_PATH = "/discovery"
 
@@ -104,14 +105,24 @@ class DistributedDiscovery(object):
 		path = _znode_path(service_class, service_name)
 		cached = self._get_config_from_cache(path, callback)
 		if cached:
-			return set_metadata(cached[1], service_class, service_name, cached[0])
+			get_logger().info("DistributedConfig.load_config %s/%s (cached)" % (service_class, service_name))
+			rconfig = set_metadata(cached[1], service_class, service_name, cached[0])
+			get_logger().debug("%s" % (rconfig))
+			return rconfig
 		config = self._load_znodes(path)
 		if config:
-			return set_metadata(config[1], service_class, service_name, config[0])
+			get_logger().info("DistributedConfig.load_config %s/%s (zookeeper)" % (service_class, service_name))
+			rconfig = set_metadata(config[1], service_class, service_name, config[0])
+			get_logger().debug("%s" % (rconfig))
+			return rconfig
 		config = self._load_file_config(service_class, service_name)
-		return set_metadata(config, service_class, service_name)
+		get_logger().info("DistributedConfig.load_config %s/%s (file)" % (service_class, service_name))
+		rconfig = set_metadata(config, service_class, service_name)
+		get_logger().debug("%s" % (rconfig))
+		return rconfig
 
 	def _load_znodes(self, path, add_callback=True):
+		get_logger().info("DistributedConfig._load_znodes: %s. Callback: %s" % (path, add_callback))
 		if self.connection.exists(path):
 			children = self.connection.children(path)
 			if add_callback:
@@ -142,9 +153,7 @@ class DistributedDiscovery(object):
 		config = k.config.KnewtonConfig().fetch_config(path)
 		if config.has_key('server_list'):
 			config_list = config['server_list']
-			print config_list
 			selectee = random.choice(config_list)
-			print selectee
 			return selectee
 		else:
 			return config
@@ -154,9 +163,14 @@ class DistributedDiscovery(object):
 		service_class, service_name = _znode_to_class_and_name(path)
 		config = self._load_znodes(path, add_callback=False)
 		callbacks = self.callbacks.get(path, [])
+		get_logger().info("DistributedConfig._child_callback: %s" % (path))
 		for callback in callbacks:
-			callback(path, config[0], config[1])
-
+			conf = None
+			if config:
+				conf = config[1]
+			else:
+				get_logger().warning("DistributedConfig._child_callback: NO CONFIGS AVAILABLE")
+			callback(path, conf)
 
 class DistributedMultiDiscovery(DistributedDiscovery):
 	"""
@@ -191,14 +205,24 @@ class DistributedMultiDiscovery(DistributedDiscovery):
 		path = _znode_path(service_class, service_name)
 		cached = self._get_config_from_cache(path, callback)
 		if cached:
-			return [conf[1] for conf in cached]
+			get_logger().info("DistributedMultiConfig.load_config: %s/%s (cached)" % (service_class, service_name))
+			rconfig = [conf[1] for conf in cached]
+			get_logger().debug("%s" % (rconfig))
+			return rconfig
 		config = self._load_znodes(path)
 		if config:
-			return [conf[1] for conf in config]
+			get_logger().info("DistributedMultiConfig.load_config: %s/%s (zookeeper)" % (service_class, service_name))
+			rconfig = [conf[1] for conf in config]
+			get_logger().debug("%s" % (rconfig))
+			return rconfig
 		config = self._load_file_config(service_class, service_name)
-		return [set_metadata(c, service_class, service_name) for c in config]
+		get_logger().info("DistributedMultiConfig.load_config: %s/%s (file)" % (service_class, service_name))
+		rconfig = [set_metadata(c, service_class, service_name) for c in config]
+		get_logger().debug("%s" % (rconfig))
+		return rconfig
 
 	def _load_znodes(self, path, add_callback=True):
+		get_logger().info("DistributedMultiConfig._load_znodes: %s. Callback: %s" % (path, add_callback))
 		if self.connection.exists(path):
 			children = self.connection.children(path)
 			if add_callback:
@@ -222,6 +246,20 @@ class DistributedMultiDiscovery(DistributedDiscovery):
 		else:
 			return [config]
 
+	def _child_callback(self, children):
+		path = children.path
+		get_logger().info("DistributedMultiConfig._child_callback: %s" % (path))
+		service_class, service_name = _znode_to_class_and_name(path)
+		config = self._load_znodes(path, add_callback=False)
+		callbacks = self.callbacks.get(path, [])
+		for callback in callbacks:
+			config_list = []
+			if config:
+				config_list = [conf[1] for conf in config]
+			else:
+				get_logger().warning("DistributedConfig._child_callback: NO CONFIGS AVAILABLE")
+			callback(path, config_list)
+
 def write_distributed_config(connection, service_class, service_name, config, key=None, interface='eth0', ephemeral=True):
 	if not key:
 		key = _get_local_ip(interface)
@@ -236,9 +274,12 @@ def write_distributed_config(connection, service_class, service_name, config, ke
 	if connection.exists(znode):
 		connection.delete(znode)
 	connection.create(znode, payload, zc.zk.OPEN_ACL_UNSAFE, flags)
+	get_logger().info("write_distributed_config: %s/%s/%s, Ephemeral: %s" % (service_class, service_name, key, ephemeral))
+	get_logger().debug("%s" % (config))
 	return key
 
 def remove_stale_config(connection, service_class, service_name, key):
+	get_logger().info("remove_stale_config: %s/%s/%s" % (service_class, service_name, key))
 	connection.delete(_znode_path(service_class, service_name, key))
 
 def set_metadata(config, service_class, service_name, key=None):

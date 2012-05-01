@@ -82,12 +82,10 @@ class DistributedDiscoveryTests(unittest.TestCase):
 	def test_load_config_with_callback(self):
 		self.touched = False
 		self.cbpath = None
-		self.cbkey = None
 		self.cbconfig = None
-		def cb(path, key, config):
+		def cb(path, config):
 			self.touched = True
 			self.cbpath = path
-			self.cbkey = key
 			self.cbconfig = config
 		pettingzoo.discovery.write_distributed_config(self.connection, 'mysql', 'reports', self.sample, '127.0.0.1')
 		dc = pettingzoo.discovery.DistributedDiscovery(self.connection)
