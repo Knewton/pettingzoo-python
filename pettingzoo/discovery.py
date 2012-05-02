@@ -138,6 +138,13 @@ class DistributedDiscovery(object):
 		return retarr
 
 	def get_service_names(self, service_class):
+		"""
+		Returns a list of current service names for a service class.
+		Parameters:
+			service_class - the service class to return service names for
+		Returns:
+			a list of service classes as strings
+		"""
 		retarr = []
 		path = '/'.join([CONFIG_PATH, service_class])
 		if self.connection.exists(path):
@@ -145,6 +152,22 @@ class DistributedDiscovery(object):
 			for child in children:
 				retarr.append(child)
 		return retarr
+
+	def count_nodes(self, service_class, service_name):
+		"""
+		Counts the number of nodes for a service class/name combination
+		Parameters:
+			service_class - the service class
+			service_name - the service name
+		Returns:
+			a count of nodes
+		"""
+		count = 0
+		path = '/'.join([CONFIG_PATH, service_class, service_name])
+		if self.connection.exists(path):
+			children = self.connection.children(path)
+			count = len(children)
+		return count
 
 	def _load_znodes(self, path, add_callback=True):
 		get_logger().info("DistributedConfig._load_znodes: %s. Callback: %s" % (path, add_callback))
@@ -174,7 +197,7 @@ class DistributedDiscovery(object):
 		return self.load_config(service_class, service_name, callback)
 
 	def _load_file_config(self, service_class, service_name, callback=None):
-		path = '/'.join([service_class, service_name])
+		path = '/'.join(['discovery', service_class, service_name])
 		config = k.config.KnewtonConfig().fetch_config(path)
 		if config.has_key('server_list'):
 			config_list = config['server_list']
@@ -273,7 +296,7 @@ class DistributedMultiDiscovery(DistributedDiscovery):
 				return config
 
 	def _load_file_config(self, service_class, service_name, callback=None):
-		path = '/'.join([service_class, service_name])
+		path = '/'.join(['discovery', service_class, service_name])
 		config = k.config.KnewtonConfig().fetch_config(path)
 		if config.has_key('server_list'):
 			return config['server_list']

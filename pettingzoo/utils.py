@@ -4,6 +4,7 @@ import threading
 import sys
 import traceback
 import logging
+import logging.config
 
 def connect_to_zk(servers, logging=None):
 	"""
@@ -19,6 +20,16 @@ def connect_to_zk(servers, logging=None):
 	conn = zc.zk.ZooKeeper(servers)
 	conn.watches.lock = threading.RLock()
 	return conn
+
+def get_server_list(config):
+	if isinstance(config, list):
+		return ','.join(["%s:%s" % (c['host'], c['port']) for c in config])
+	elif config.has_key('server_list'):
+		return ','.join(["%s:%s" % (c['host'], c['port']) for c in config['server_list']])
+	elif config.has_key('zookeeper'):
+		return ','.join(config['zookeeper']['server_list'])
+	elif config.has_key('header'):
+		return "%s:%s" % (config['host'], config['port'])
 
 def counter_path(path, counter):
 	"""

@@ -7,6 +7,7 @@ from pettingzoo.utils import connect_to_zk
 
 class DiscoveryTests(unittest.TestCase):
 	def setUp(self):
+		pettingzoo.utils.configure_logger()
 		self.mock = True
 		self.conn_string = '127.0.0.1:2181'
 		if self.mock:
@@ -51,6 +52,7 @@ class DiscoveryTests(unittest.TestCase):
 
 class DistributedDiscoveryTests(unittest.TestCase):
 	def setUp(self):
+		pettingzoo.utils.configure_logger()
 		self.mock = True
 		self.conn_string = '127.0.0.1:2181'
 		if self.mock:
@@ -98,7 +100,6 @@ class DistributedDiscoveryTests(unittest.TestCase):
 		config = self.cbconfig
 		self.assertTrue(config['host'] in ['localhost', 'notlocalhost'])
 		mismatch_keys = [key for key in self.sample if not key in config or self.sample[key] != config[key]]
-		print mismatch_keys
 		for key in mismatch_keys:
 			self.assertTrue(key in ['host', 'header'])
 
@@ -109,7 +110,6 @@ class DistributedDiscoveryTests(unittest.TestCase):
 		dc = pettingzoo.discovery.DistributedDiscovery(self.connection)
 		config = dc.load_config('mysql', 'reports')
 		mismatch_keys = [key for key in self.sample if not key in config or self.sample[key] != config[key]]
-		print mismatch_keys
 		for key in mismatch_keys:
 			self.assertTrue(key in ['host', 'header'])
 
@@ -125,6 +125,7 @@ class DistributedDiscoveryTests(unittest.TestCase):
 
 class DistributedMultiDiscovery(unittest.TestCase):
 	def setUp(self):
+		pettingzoo.utils.configure_logger()
 		self.mock = True
 		self.conn_string = '127.0.0.1:2181'
 		if self.mock:
@@ -173,6 +174,7 @@ class DistributedMultiDiscovery(unittest.TestCase):
 
 class FileFallbackTests(unittest.TestCase):
 	def setUp(self):
+		pettingzoo.utils.configure_logger()
 		self.mock = True
 		self.conn_string = '127.0.0.1:2181'
 		if self.mock:
@@ -184,11 +186,11 @@ class FileFallbackTests(unittest.TestCase):
 		self.sample = {'header': {'service_class': 'mysql', 'metadata': {'version': 1.0}}, 'username': 'reports', 'host': 'localhost', 'port': 3306, 'password': 'reports', 'database': 'reports', 'encoding': 'utf8'}
 		self.sample2 = {'header': {'service_class': 'mysql', 'metadata': {'version': 1.0}}, 'username': 'reports', 'host': 'notlocalhost', 'port': 3306, 'password': 'reports', 'database': 'reports', 'encoding': 'utf8'}
 		k.config.KnewtonConfig = k.config.KnewtonConfigTest()
-		k.config.KnewtonConfig().add_config(self.sample, 'mysql/exist')
+		k.config.KnewtonConfig().add_config(self.sample, 'discovery/mysql/exist')
 		self.list_sample = {'server_list': [self.sample]}
-		k.config.KnewtonConfig().add_config(self.list_sample, 'mysql/list')
+		k.config.KnewtonConfig().add_config(self.list_sample, 'discovery/mysql/list')
 		self.list_sample2 = {'server_list': [self.sample, self.sample2]}
-		k.config.KnewtonConfig().add_config(self.list_sample2, 'mysql/mlist')
+		k.config.KnewtonConfig().add_config(self.list_sample2, 'discovery/mysql/mlist')
 
 	def test_config_file_fallback_dc(self):
 		dc = pettingzoo.discovery.DistributedDiscovery(self.connection)
