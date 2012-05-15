@@ -1,7 +1,7 @@
 import unittest
 import zookeeper
 from pettingzoo.utils import connect_to_zk
-import pettingzoo.exists
+from pettingzoo.deleted import Deleted
 import zc
 from pettingzoo.dbag import DistributedBag
 
@@ -9,7 +9,7 @@ ZOO_CONF = "/etc/knewton/zookeeper/platform.yml"
 
 DO_MOCK = True
 
-class ExistsTests(unittest.TestCase):
+class DeletedTests(unittest.TestCase):
 	def setUp(self):
 		self.conn_string = '127.0.0.1:2181'
 		if DO_MOCK:
@@ -21,14 +21,14 @@ class ExistsTests(unittest.TestCase):
 		self.connection = connect_to_zk(self.conn_string)
 		self.path = '/test_exists'
 
-	def test_exists_watch(self):
+	def test_deleted_watch(self):
 		self.touched = False
 		def cb(e):
 			self.touched = True
 		test_path = self.path + "/exists"
 		self.connection.create_recursive(test_path, "", acl=zc.zk.OPEN_ACL_UNSAFE)
-		exists = pettingzoo.exists.Exists(self.connection, test_path)
-		exists(cb)
+		deleted = Deleted(self.connection, test_path)
+		deleted(cb)
 		self.connection.delete_recursive(test_path)
 		self.assertTrue(self.touched)
 

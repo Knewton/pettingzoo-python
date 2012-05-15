@@ -4,7 +4,7 @@ import multiprocessing
 import sys
 import traceback
 import pettingzoo.utils
-import pettingzoo.exists
+from pettingzoo.deleted import Deleted
 
 ITEM_PATH = "/item";
 TOKEN_PATH = "/token";
@@ -138,8 +138,8 @@ class DistributedBag(object):
 			path = id_to_item_path(self.path, new_id)
 			with self.write_lock:
 				self.ids.add(new_id)
-				exists = pettingzoo.exists.Exists(self.connection, path, [self._process_deleted])
-				self.deletion_handlers[new_id] = exists
+				deleted = Deleted(self.connection, path, [self._process_deleted])
+				self.deletion_handlers[new_id] = deleted
 				for callback in self.add_callbacks:
 					callback(self, new_id)
 		except:
@@ -166,7 +166,7 @@ class DistributedBag(object):
 
 	def _process_deleted(self, node):
 		"""
-		Callback used for Exists object.  Not intended for external use.
+		Callback used for Deleted  object.  Not intended for external use.
 		"""
 		del_id = pettingzoo.utils.counter_value(node.path)
 		self._on_delete_id(del_id)

@@ -5,7 +5,7 @@ import sys
 import traceback
 import pettingzoo.testing
 
-class Exists(zc.zk.NodeInfo):
+class Deleted(zc.zk.NodeInfo):
 	"""
 	This class is implementing the zc.zk
 	"""
