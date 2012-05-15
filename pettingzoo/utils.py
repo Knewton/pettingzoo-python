@@ -100,3 +100,52 @@ def min_predecessor(children, position):
 		if  predecessor < counter < position:
 			predecessor = counter
 	return predecessor 
+
+class ReadWriteLock:
+	"""
+	A lock object that allows many simultaneous "read-locks", but
+	only one "write-lock".
+
+	Source: http://code.activestate.com/recipes/66426-readwritelock/
+	"""
+
+	def __init__(self):
+		self._read_ready = threading.Condition(threading.RLock())
+		self._readers = 0
+
+	def __enter__(self):
+		self.acquire_write()
+
+	def __exit__(self, exc_type, exc_val, exc_tb):
+		self.release_write()
+
+	def acquire_read(self):
+		"""Acquire a read-lock. Blocks only if some thread has
+		acquired write-lock."""
+		self._read_ready.acquire()
+		try:
+			self._readers += 1
+		finally:
+			self._read_ready.release()
+
+	def release_read(self):
+		"""Release a read-lock."""
+		self._read_ready.acquire()
+		try:
+			self._readers -= 1
+			if not self._readers:
+				self._read_ready.notifyAll()
+		finally:
+			self._read_ready.release()
+
+	def acquire_write(self):
+		"""Acquire a write lock. Blocks until there are no
+		acquired read- or write-locks."""
+		self._read_ready.acquire()
+		while self._readers > 0:
+			self._read_ready.wait()
+
+	def release_write(self):
+		"""Release a write-lock."""
+		self._read_ready.release()
+
