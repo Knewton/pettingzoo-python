@@ -1,8 +1,8 @@
 import unittest
+import yaml
+import threading
 import k.config
 import pettingzoo.discovery
-import yaml
-import time
 from pettingzoo.utils import connect_to_zk
 
 class DiscoveryTests(unittest.TestCase):
@@ -137,10 +137,12 @@ class DistributedDiscoveryTests(unittest.TestCase):
 		self.touched = False
 		self.cbpath = None
 		self.cbconfig = None
+		event = threading.Event()
 		def callback(path, config):
 			self.touched = True
 			self.cbpath = path
 			self.cbconfig = config
+			event.set()
 		pettingzoo.discovery.write_distributed_config(
 			self.connection, 'mysql', 'reports', self.sample, '127.0.0.1')
 		ddc = pettingzoo.discovery.DistributedDiscovery(self.connection)
@@ -158,7 +160,7 @@ class DistributedDiscoveryTests(unittest.TestCase):
 		}
 		pettingzoo.discovery.write_distributed_config(
 			self.connection, 'mysql', 'reports', sample2, '127.0.0.2')
-		time.sleep(.1)
+		event.wait(0.25)
 		self.assertTrue(self.touched)
 		self.assertEqual(self.cbpath, '/test_discovery/mysql/reports')
 		config = self.cbconfig

@@ -1,14 +1,12 @@
 import unittest
-from pettingzoo.leader_queue import *
+import threading
+import zc.zk.testing
 import pettingzoo.utils
-from pettingzoo.candidate import Candidate
-import time
-import sys
+import pettingzoo.testing
+from pettingzoo.leader_queue import *
 
 class TestCandidate(Candidate):
 	def on_elected(self):
-		pass
-	def on_close(self):
 		pass
 
 class LeaderQueueTests(unittest.TestCase):
@@ -16,97 +14,142 @@ class LeaderQueueTests(unittest.TestCase):
 		self.mock = True
 		self.conn_string = '127.0.0.1:2181'
 		if self.mock:
-			import zc.zk.testing
-			import pettingzoo.testing
 			zc.zk.testing.setUp(self, connection_string=self.conn_string)
 			zc.zk.testing.ZooKeeper.create = pettingzoo.testing.create
 			zc.zk.testing.ZooKeeper.exists = pettingzoo.testing.exists
 			zc.zk.testing.Node.deleted = pettingzoo.testing.deleted
 		self.connection = pettingzoo.utils.connect_to_zk(self.conn_string)
 		self.path = '/test_leaderq'
-		self.created = False
+		pettingzoo.utils.configure_logger()
 
 	def test_lq_create(self):
-		leaderq = LeaderQueue(self.connection, self.path)
-		self.created = True
+		"""
+		Tests that creation of a leader queue creates the appropriate needed
+		paths on zookeeper.
+		"""
+		LeaderQueue(self.connection, self.path)
 		children = [child for child in self.connection.children(self.path)]
 		self.assertTrue('candidate' in children)
 
 	def test_lq_add_candidate(self):
+		"""
+		Tests that adding a candidate to the leader queue is reflected in
+		zookeeper
+		"""
 		leaderq = LeaderQueue(self.connection, self.path)
-		self.created = True
-		candidates = self._create_candidates(leaderq, num_candidates=2)
-		children = [child for child in self.connection.children(self.path + "/candidate")]
+		self._create_candidates(leaderq, num_candidates=2)
+		children = [child for child in self.connection.children(
+			self.path + "/candidate")]
 		self.assertTrue('candidate0000000000' in children)
 		self.assertTrue('candidate0000000001' in children)
 		self.assertEquals(len(children), 2)
 
 	def test_lq_remove(self):
+		"""
+		Tests that removing a candidate from the leader queue is reflected
+		in zookeeper
+		"""
 		leaderq = LeaderQueue(self.connection, self.path)
-		self.created = True
-		cs = self._create_candidates(leaderq, num_candidates=2)
-		children = [child for child in self.connection.children(self.path + "/candidate")]
+		cands = self._create_candidates(leaderq, num_candidates=2)
+		children = [child for child in self.connection.children(
+			self.path + "/candidate")]
 		self.assertEquals(len(children), 2)
 		self.assertTrue('candidate0000000000' in children)
 		self.assertTrue('candidate0000000001' in children)
-		self.assertTrue(leaderq.remove_candidate(cs[0]))
+		self.assertTrue(leaderq.remove_candidate(cands[0]))
 		self.assertFalse(leaderq.remove_candidate(TestCandidate()))
-		children = [child for child in self.connection.children(self.path + "/candidate")]
+		children = [child for child in self.connection.children(
+			self.path + "/candidate")]
 		self.assertFalse('candidate0000000000' in children)
 		self.assertTrue('candidate0000000001' in children)
 		self.assertEquals(len(children), 1)
 
 	def test_predecessor(self):
+		"""
+		"""
 		leaderq = LeaderQueue(self.connection, self.path)
-		self.created = True
-		cs = self._create_candidates(leaderq, num_candidates=2)
-		children = [child for child in self.connection.children(self.path + "/candidate")]
+		cands = self._create_candidates(leaderq, num_candidates=2)
+		children = [child for child in self.connection.children(
+			self.path + "/candidate")]
 		self.assertEquals(len(children), 2)
 		self.assertTrue('candidate0000000000' in children)
 		self.assertTrue('candidate0000000001' in children)
-		self.assertTrue(leaderq.remove_candidate(cs[0]))
-		children = [child for child in self.connection.children(self.path + "/candidate")]
+		self.assertTrue(leaderq.remove_candidate(cands[0]))
+		children = [child for child in self.connection.children(
+			self.path + "/candidate")]
 		self.assertFalse('candidate0000000000' in children)
 		self.assertTrue('candidate0000000001' in children)
 		self.assertEquals(len(children), 1)
 
 	def test_predecessor_update_on_delete(self):
+		"""
+		Tests that the leader queue object is properly updated
+		when a candidate is added.
+		"""
 		leaderq = LeaderQueue(self.connection, self.path)
-		self.created = True
-		cs = self._create_candidates(leaderq, num_candidates=2)
-		children = [child for child in self.connection.children(self.path + "/candidate")]
+		cands = self._create_candidates(leaderq, num_candidates=2)
+		children = [child for child in self.connection.children(
+			self.path + "/candidate")]
 		self.assertEquals(len(children), 2)
 		self.assertTrue('candidate0000000000' in children)
 		self.assertTrue('candidate0000000001' in children)
 		self.assertEqual(len(leaderq.counter_by_candidate.keys()), 2)
-		self.assertEqual(leaderq.counter_by_candidate[cs[0]], 0)
-		self.assertEqual(leaderq.counter_by_candidate[cs[1]], 1)
-		self.assertEqual(leaderq.candidate_by_predecessor.keys(), [0, -1]) 
-		self.assertEqual(leaderq.candidate_by_predecessor[-1], cs[0])
-		self.assertEqual(leaderq.candidate_by_predecessor[0], cs[1]) 
-		self.assertTrue(leaderq.remove_candidate(cs[0]))
-		self.assertEqual(leaderq.candidate_by_predecessor[-1], cs[1])
-		self.assertEqual(leaderq.counter_by_candidate[cs[1]], 1)
-		children = [child for child in self.connection.children(self.path + "/candidate")]
+		self.assertEqual(leaderq.counter_by_candidate[cands[0]], 0)
+		self.assertEqual(leaderq.counter_by_candidate[cands[1]], 1)
+		self.assertEqual(leaderq.candidate_by_predecessor.keys(), [0, -1])
+		self.assertEqual(leaderq.candidate_by_predecessor[-1], cands[0])
+		self.assertEqual(leaderq.candidate_by_predecessor[0], cands[1]) 
+		self.assertTrue(leaderq.remove_candidate(cands[0]))
+		self.assertEqual(leaderq.candidate_by_predecessor[-1], cands[1])
+		self.assertEqual(leaderq.counter_by_candidate[cands[1]], 1)
 
 	def test_predecessor_update_on_add(self):
+		"""
+		Tests that the leader queue object is properly updated
+		when a candidate is added.
+		"""
 		leaderq = LeaderQueue(self.connection, self.path)
-		self.created = True
-		cs = self._create_candidates(leaderq, num_candidates=2)
-		children = [child for child in self.connection.children(self.path + "/candidate")]
-		self.assertEqual(leaderq.candidate_by_predecessor[-1], cs[0])
-		self.assertEqual(leaderq.candidate_by_predecessor[0], cs[1]) 
-		self.assertTrue(leaderq.remove_candidate(cs[0]))
-		self.assertEqual(leaderq.candidate_by_predecessor[-1], cs[1])
-		self.assertEqual(leaderq.counter_by_candidate[cs[1]], 1)
-		cs.extend(self._create_candidates(leaderq, num_candidates=2))
-		self.assertEqual(leaderq.counter_by_candidate[cs[3]], 3)
-		self.assertEqual(leaderq.candidate_by_predecessor[-1], cs[1])
-		self.assertTrue(leaderq.remove_candidate(cs[1]))
-		self.assertEqual(leaderq.candidate_by_predecessor[2], cs[3])
+		cands = self._create_candidates(leaderq, num_candidates=2)
+		self.assertEqual(leaderq.candidate_by_predecessor[-1], cands[0])
+		self.assertEqual(leaderq.candidate_by_predecessor[0], cands[1]) 
+		self.assertTrue(leaderq.remove_candidate(cands[0]))
+		self.assertEqual(leaderq.candidate_by_predecessor[-1], cands[1])
+		self.assertEqual(leaderq.counter_by_candidate[cands[1]], 1)
+		cands.extend(self._create_candidates(leaderq, num_candidates=2))
+		self.assertEqual(leaderq.counter_by_candidate[cands[3]], 3)
+		self.assertEqual(leaderq.candidate_by_predecessor[-1], cands[1])
+		self.assertTrue(leaderq.remove_candidate(cands[1]))
+		self.assertEqual(leaderq.candidate_by_predecessor[2], cands[3])
+
+	def test_on_elected(self):
+		"""
+		Tests that on_elected gets called on the candidate when
+		something else removes all predecessors.
+		"""
+		self.touched = False
+		event = threading.Event()
+		class TouchedCandidate(Candidate):
+			def on_elected(slf):
+				event.set()
+				self.touched = True
+		leaderq = LeaderQueue(self.connection, self.path)
+		cands = self._create_candidates(leaderq, num_candidates=1)
+		tcand = TouchedCandidate()
+		leaderq.add_candidate(tcand)
+		children = [child for child in self.connection.children(
+			self.path + "/candidate")]
+		for child in children:
+			self.connection.delete(self.path + "/candidate/" + str(child))
+		event.wait(0.25)
+		self.assertTrue(self.touched)
 
 	def test_id_to_item_path(self):
-		self.assertEquals(id_to_item_path('/foo', 1354), '/foo/candidate/candidate0000001354')
+		"""
+		Tests that id_to_item_path returns an appropriate path
+		"""
+		self.assertEquals(
+			id_to_item_path('/foo', 1354),
+			'/foo/candidate/candidate0000001354')
 
 	def _create_candidates(self, leaderq, num_candidates):
 		'''
@@ -116,10 +159,10 @@ class LeaderQueueTests(unittest.TestCase):
 			list of candidates
 		'''
 		candidates = []
-		for i in range(0, num_candidates):
-			c = TestCandidate()
-			self.assertTrue(leaderq.add_candidate(c))
-			candidates.append(c)
+		for _ in range(0, num_candidates):
+			cand = TestCandidate()
+			self.assertTrue(leaderq.add_candidate(cand))
+			candidates.append(cand)
 		return candidates
 
 	def tearDown(self):
@@ -132,5 +175,4 @@ class LeaderQueueTests(unittest.TestCase):
 		finally:
 			self.connection.close()
 		if self.mock:
-			import zc.zk.testing
 			zc.zk.testing.tearDown(self)

@@ -1,7 +1,7 @@
 import unittest
+import threading
 from pettingzoo.dbag import *
 from pettingzoo.utils import connect_to_zk, configure_logger
-import time
 
 class DbagTests(unittest.TestCase):
 	def setUp(self):
@@ -16,14 +16,12 @@ class DbagTests(unittest.TestCase):
 			zc.zk.testing.Node.deleted = pettingzoo.testing.deleted
 		self.connection = connect_to_zk(self.conn_string)
 		self.path = '/test_dbag'
-		self.created = False
 		self.touched = False
 		configure_logger()
 
 	def test_dbag_create(self):
 		"""Tests that instantiating dbag creates all the needed paths."""
 		DistributedBag(self.connection, self.path)
-		self.created = True
 		children = [child for child in self.connection.children(self.path)]
 		self.assertTrue('token' in children)
 		self.assertTrue('item' in children)
@@ -31,7 +29,6 @@ class DbagTests(unittest.TestCase):
 	def test_dbag_add(self):
 		"""Tests that add actually adds the item to zookeeper."""
 		dbag = DistributedBag(self.connection, self.path)
-		self.created = True
 		id0 = dbag.add("foo", False)
 		self.assertEquals(id0, 0)
 		id1 = dbag.add("bar", False)
@@ -49,7 +46,6 @@ class DbagTests(unittest.TestCase):
 	def test_dbag_remove(self):
 		"""Tests that remove actually removes the item from zookeeper."""
 		dbag = DistributedBag(self.connection, self.path)
-		self.created = True
 		dbag.add("foo", False)
 		dbag.add("bar", False)
 		children = [
@@ -75,7 +71,6 @@ class DbagTests(unittest.TestCase):
 		call it on.
 		"""
 		dbag = DistributedBag(self.connection, self.path)
-		self.created = True
 		dbag.add("foo", False)
 		result = dbag.get(0)
 		self.assertEqual(result, "foo")
@@ -85,10 +80,11 @@ class DbagTests(unittest.TestCase):
 	def test_dbag_get_items(self):
 		"""Tests that calling get_items returns you all item ids."""
 		dbag = DistributedBag(self.connection, self.path)
-		self.created = True
+		event = threading.Event()
 		dbag.add("foo", False)
+		dbag.add_listeners(remove_callback=lambda x, y: event.set())
 		dbag.add("bar", False)
-		time.sleep(0.25)
+		event.wait(0.25)
 		self.assertEqual(dbag.get_items(), set([0, 1]))
 
 	def test_dbag_get_items_with_remove(self):
@@ -96,13 +92,17 @@ class DbagTests(unittest.TestCase):
 		Verifies that items removed are properly reflected from the dbag.
 		"""
 		dbag = DistributedBag(self.connection, self.path)
-		self.created = True
+		event = threading.Event()
 		dbag.add("foo", False)
 		dbag.add("bar", False)
+		dbag.add_listeners(add_callback=lambda x, y: event.set())
 		dbag.add("baz", False)
-		time.sleep(0.25)
+		event.wait(0.25)
 		self.assertEqual(dbag.get_items(), set([0, 1, 2]))
+		event.clear()
+		dbag.add_listeners(remove_callback=lambda x, y: event.set())
 		dbag.remove(1)
+		event.wait(0.25)
 		children = [
 			child for child in self.connection.children(self.path + "/item")]
 		self.assertTrue('item0000000000' in children)
@@ -111,7 +111,6 @@ class DbagTests(unittest.TestCase):
 		children = [
 			child for child in self.connection.children(self.path + "/token")]
 		self.assertTrue('token0000000002' in children)
-		time.sleep(0.25)
 		self.assertEqual(dbag.get_items(), set([0, 2]))
 		
 	def test_dbag_add_listeners_add(self):
@@ -120,16 +119,18 @@ class DbagTests(unittest.TestCase):
 		Also verifies that the add callback gets hit.
 		"""
 		dbag = DistributedBag(self.connection, self.path)
+		event = threading.Event()
 		def callback(idbag, bag_id):
 			"""Tests that the input the callback is appropriate"""
 			self.assertEqual(dbag, idbag)
 			self.assertTrue(bag_id in [0, 1])
 			self.touched = True
+			event.set()
 		dbag.add_listeners(add_callback=callback)
-		self.created = True
 		dbag.add("foo", False)
+		event.clear()
 		dbag.add("bar", False)
-		time.sleep(0.25)
+		event.wait(0.25)
 		self.assertEqual(dbag.get_items(), set([0, 1]))
 		self.assertTrue(self.touched)
 
@@ -139,18 +140,21 @@ class DbagTests(unittest.TestCase):
 		from the list.  Also verifies that the remove callback gets hit.
 		"""
 		dbag = DistributedBag(self.connection, self.path)
+		event = threading.Event()
+		dbag.add("foo", False)
+		dbag.add("bar", False)
+		dbag.add_listeners(add_callback=lambda x, y: event.set())
+		dbag.add("baz", False)
+		event.wait(0.25)
+		self.assertEqual(dbag.get_items(), set([0, 1, 2]))
+		event.clear()
 		def callback(idbag, bag_id):
 			"""Tests that the input the callback is appropriate"""
 			self.assertEqual(dbag, idbag)
 			self.assertTrue(bag_id in [1])
 			self.touched = True
+			event.set()
 		dbag.add_listeners(remove_callback=callback)
-		self.created = True
-		dbag.add("foo", False)
-		dbag.add("bar", False)
-		dbag.add("baz", False)
-		time.sleep(0.25)
-		self.assertEqual(dbag.get_items(), set([0, 1, 2]))
 		dbag.remove(1)
 		children = [
 			child for child in self.connection.children(self.path + "/item")]
@@ -160,7 +164,7 @@ class DbagTests(unittest.TestCase):
 		children = [
 			child for child in self.connection.children(self.path + "/token")]
 		self.assertTrue('token0000000002' in children)
-		time.sleep(0.25)
+		event.wait(0.25)
 		self.assertEqual(dbag.get_items(), set([0, 2]))
 		self.assertTrue(self.touched)
 
