@@ -23,7 +23,7 @@ def main():
 	(options, args) = option_parser().parse_args()
 	text = ""
 	if options.input == True:
-		text = '\n'.join(sys.stdin.readlines())
+		text = ''.join(sys.stdin.readlines())
 	create_node(options.server, text, '/'.join(args))
 
 if __name__ == "__main__":
