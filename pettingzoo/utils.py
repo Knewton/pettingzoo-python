@@ -6,7 +6,7 @@ import traceback
 import logging
 import logging.config
 
-def connect_to_zk(servers, logging=None):
+def connect_to_zk(servers, **kwargs):
 	"""
 	Function used to connect to zookeeper for pettingzoo.multiprocessing.
 	Parameters:
@@ -15,9 +15,7 @@ def connect_to_zk(servers, logging=None):
 	Returns:
 		zc.zk.ZooKeeper connection
 	"""
-	if logging:
-		zookeeper.set_log_stream(logging)
-	conn = zc.zk.ZooKeeper(servers)
+	conn = zc.zk.ZooKeeper(servers, **kwargs)
 	conn.watches.lock = threading.RLock()
 	return conn
 
