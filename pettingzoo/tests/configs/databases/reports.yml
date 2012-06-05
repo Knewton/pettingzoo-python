@@ -1,0 +1,7 @@
+database:
+  adapter: mysql
+  encoding: utf8
+  database: reports
+  username: reports
+  password: reports
+  host: localhost

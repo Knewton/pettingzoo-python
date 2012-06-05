@@ -1,0 +1,4 @@
+memcache:
+  address: localhost
+  port: 11211
+  namespace: test

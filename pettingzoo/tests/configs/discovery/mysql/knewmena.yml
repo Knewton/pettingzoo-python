@@ -1,0 +1,10 @@
+header:
+  service_class: mysql
+  metadata:
+    protocol: mysql
+    version: 1.0
+encoding: utf8
+database: knewmena
+username: knewmena
+password: knewmena
+host: localhost

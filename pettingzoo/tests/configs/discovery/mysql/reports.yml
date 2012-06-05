@@ -1,0 +1,11 @@
+server_list:
+  - header:
+      service_class: mysql
+      metadata:
+        protocol: mysql
+        version: 1.0
+    encoding: utf8
+    database: reports
+    username: reports
+    password: reports
+    host: localhost
