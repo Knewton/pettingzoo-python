@@ -65,8 +65,23 @@ class DistributedBag(object):
 	def _populate_ids(self):
 		"""Fills out the bag when initial connection to it is made"""
 		ichildren = self.connection.children(self.path + ITEM_PATH)
-		for child in ichildren:
-			self._on_new_id(pettingzoo.utils.counter_value(child))
+		with self.lock:
+			for child in ichildren:
+				try:
+					new_id = pettingzoo.utils.counter_value(child)
+					path = id_to_item_path(self.path, new_id)
+					get_logger().info("DistributedBag._on_new_id %s" % (path))
+					self.ids.add(new_id)
+					deleted = Deleted(
+						self.connection, path, [self._process_deleted])
+					self.deletion_handlers[new_id] = deleted
+					for callback in self.add_callbacks:
+						callback(self, new_id)
+				except:
+					exc_class, exc, tback = sys.exc_info()
+					sys.stderr.write(str(exc_class) + "\n")
+					traceback.print_tb(tback)
+					raise exc_class, exc, tback
 
 	def _cleanup_tokens(self, children, max_token):
 		"""
@@ -83,7 +98,8 @@ class DistributedBag(object):
 				get_logger().warning(
 					"DistributedBag._cleanup_tokens %s" % (token_id))
 				try:
-					self.connection.adelete(id_to_token_path(self.path, token_id))
+					self.connection.adelete(
+						id_to_token_path(self.path, token_id))
 				except zookeeper.NoNodeException:
 					pass # If it doesn't exist, that's ok
 
@@ -100,7 +116,8 @@ class DistributedBag(object):
 		if ephemeral:
 			flags = zookeeper.EPHEMERAL | zookeeper.SEQUENCE
 		newpath = self.connection.create(
-			self.path + ITEM_PATH + ITEM_PATH, data, zc.zk.OPEN_ACL_UNSAFE, flags)
+			self.path + ITEM_PATH + ITEM_PATH,
+			data, zc.zk.OPEN_ACL_UNSAFE, flags)
 		item_id = pettingzoo.utils.counter_value(newpath)
 		get_logger().debug("DistributedBag.add %s: %s" % (item_id, data))
 		self.connection.acreate(

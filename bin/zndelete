@@ -2,25 +2,61 @@
 # vim:filetype=python
 import zc.zk
 import sys
+import k.config
+import pettingzoo.utils
 from optparse import OptionParser
 
-def remove_node(server, dryrun, path):
+def remove_node(zkconfig, dryrun, path):
 	if not path[0] == '/':
 		path = "/" + path
-	conn = zc.zk.ZooKeeper(server)
+	conn = pettingzoo.utils.connect_to_zk(
+		pettingzoo.utils.get_server_list(zkconfig))
 	conn.delete_recursive(path, dryrun)
 
 def option_parser():
-	usage = '\n'.join(["usage: %prog [options] [path]", "  Removes a znode from zookeeper.  Will not removoe ephermal nodes or their parents."])
+	usage = ''.join([
+		"usage: %prog [options] [path]\n", "  Removes a znode from zookeeper."
+		"  Will not remove ephermal nodes or their parents."])
 	parser = OptionParser(usage=usage)
-	#parser.add_option("-c", "--config", dest="config", help="use the passed in knewton config")
-	parser.add_option("-d", "--dry-run", dest="dryrun", action="store_true", default=False, help="Does a dry run that prints the nods that would be deleted.")
-	parser.add_option("-s", "--server", dest="server", default="127.0.0.1:2181", help="Zookeeper server to connect to. defaults to '127.0.0.1:2181")
+	parser.add_option(
+		"--dry-run", dest="dryrun", action="store_true", default=False,
+		help="Does a dry run that prints the nodes that would be deleted.")
+	parser.add_option(
+		"-s", "--server", dest="server",
+		help="directly set zookeeper server to connect to arg.")
+	parser.add_option(
+		"-z", "--zkconfig", dest="zkconfig",
+		help="zookeeper config file: defaults to localhost:2181")
+	parser.add_option(
+		"-d", "--debug", dest="debug", default=False, action="store_true",
+		help="turn on debugging")
+	parser.add_option(
+		"-l", "--lconfig", dest="lconfig",
+		help="python logger config file: defaults to None (stderr)")
 	return parser
 
 def main():
 	(options, args) = option_parser().parse_args()
-	remove_node(options.server, options.dryrun, '/'.join(args))
+	if options.debug:
+		pettingzoo.utils.configure_logger()
+	if options.lconfig:
+		pettingzoo.utils.configure_logger(
+			config_file=os.path.abspath(os.path.expanduser(options.lconfig)))
+	if not options.zkconfig:
+		k.config.KnewtonConfig()._add_config({
+				'header': {'service_class': 'zookeeper'},
+				'host': 'localhost', 'port': 2181},
+			'zookeeper/default')
+		options.zkconfig = 'zookeeper/default'
+	if options.server:
+		host, port = options.server.split(':')
+		k.config.KnewtonConfig()._add_config({
+				'header': {'service_class': 'zookeeper'},
+				'host': host, 'port': int(port)},
+			'zookeeper/cli')
+		options.zkconfig = 'zookeeper/cli'
+	zkconfig = k.config.KnewtonConfig().fetch_config(options.zkconfig)
+	remove_node(zkconfig, options.dryrun, '/'.join(args))
 
 if __name__ == "__main__":
 	main()

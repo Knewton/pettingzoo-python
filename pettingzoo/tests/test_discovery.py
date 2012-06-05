@@ -93,7 +93,8 @@ class DistributedDiscoveryTests(unittest.TestCase):
 		}
 		self.sample_slash = {
 			'header': {
-				'service_class': 'cassandra/thrift', 'metadata': {'version': 1.0}
+				'service_class': 'cassandra/thrift',
+				'metadata': {'version': 1.0}
 			},
 			'host': 'localhost',
 			'port': 9160,
@@ -125,7 +126,8 @@ class DistributedDiscoveryTests(unittest.TestCase):
 
 	def test_load_config_with_slash(self):
 		pettingzoo.discovery.write_distributed_config(
-			self.connection, 'cassandra/thrift', 'platform', self.sample_slash, '127.0.0.1')
+			self.connection,
+			'cassandra/thrift', 'platform', self.sample_slash, '127.0.0.1')
 		ddc = pettingzoo.discovery.DistributedDiscovery(self.connection)
 		config = ddc.load_config('cassandra/thrift', 'platform')
 		mismatch_keys = [

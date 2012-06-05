@@ -46,7 +46,9 @@ class Deleted(zc.zk.NodeInfo):
 		zkfunc = getattr(zookeeper, 'exists')
 		def handler(h, t, state, p, reraise=False):
 			if state != zookeeper.CONNECTED_STATE:
-				zc.zk.logger.warning("Node watcher event %r with non-connected state, %r", t, state)
+				zc.zk.logger.warning(
+					"Node watcher event %r with non-connected state, %r",
+					t, state)
 				return
 			try:
 				assert h == self.session.handle
@@ -54,7 +56,8 @@ class Deleted(zc.zk.NodeInfo):
 				assert p == self.path
 				if self.key not in self.session.watches:
 					return
-				assert t == self.event_type or t == self.event_type | pettingzoo.testing.TESTING_FLAG
+				assert t == self.event_type or \
+					t == self.event_type | pettingzoo.testing.TESTING_FLAG
 				try:
 					v = zkfunc(self.session.handle, self.path, handler)
 				except zookeeper.NoNodeException:
@@ -71,10 +74,16 @@ class Deleted(zc.zk.NodeInfo):
 				exc_class, exc, tb = sys.exc_info()
 				sys.stderr.write(str(exc_class) + "\n")
 				traceback.print_tb(tb)
-				zc.zk.logger.exception("%s(%s) handler failed", 'exists', self.path)
+				zc.zk.logger.exception(
+					"%s(%s) handler failed", 'exists', self.path)
 				if reraise:
 					raise exc_class, exc, tb
-		handler(self.session.handle, self.event_type, self.session.state, self.path, True)
+		handler(
+			self.session.handle,
+			self.event_type,
+			self.session.state,
+			self.path,
+			True)
 
 	def _rewatch(self):
 		"""
@@ -101,7 +110,8 @@ class Deleted(zc.zk.NodeInfo):
 				except Exception, v:
 					self.callbacks.remove(callback)
 					if isinstance(v, zc.zk.CancelWatch):
-						zc.zk.logger.debug("cancelled watch(%r, %r)", self, callback)
+						zc.zk.logger.debug(
+							"cancelled watch(%r, %r)", self, callback)
 					else:
 						zc.zk.logger.exception("watch(%r, %r)", self, callback)
 

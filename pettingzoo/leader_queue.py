@@ -122,7 +122,8 @@ class LeaderQueue(object):
 			candidate = self.candidate_by_predecessor.get(del_id, None)
 			if del_id == None:
 				get_logger().warning(
-					"LeaderQueue._handle_remove Unknown candidate %s" % (del_id))
+					"LeaderQueue._handle_remove Unknown candidate %s" %
+					(del_id))
 			elif candidate == None: 
 				get_logger().debug(
 					"LeaderQueue._handle_remove Removed candidate is not"
@@ -143,7 +144,8 @@ class LeaderQueue(object):
 			# check watch does not already exist
 			if self.deletion_handlers.get(counter, None) == None: 
 				path = id_to_item_path(self.path, counter)
-				delete_watch = Deleted(self.connection, path, [self._process_deleted])
+				delete_watch = Deleted(
+					self.connection, path, [self._process_deleted])
 				# stuff it on the object to make sure the watch still exists
 				self.deletion_handlers[counter] = delete_watch
 		return None

@@ -1,8 +1,9 @@
 import unittest
 import zookeeper
+import zc
+import pettingzoo.testing
 from pettingzoo.utils import connect_to_zk
 from pettingzoo.deleted import Deleted
-import zc
 from pettingzoo.dbag import DistributedBag
 
 ZOO_CONF = "/etc/knewton/zookeeper/platform.yml"
@@ -13,7 +14,6 @@ class DeletedTests(unittest.TestCase):
 	def setUp(self):
 		self.conn_string = '127.0.0.1:2181'
 		if DO_MOCK:
-			import pettingzoo.testing
 			zc.zk.testing.setUp(self, connection_string=self.conn_string)
 			zc.zk.testing.ZooKeeper.create = pettingzoo.testing.create
 			zc.zk.testing.ZooKeeper.exists = pettingzoo.testing.exists
@@ -26,7 +26,8 @@ class DeletedTests(unittest.TestCase):
 		def cb(e):
 			self.touched = True
 		test_path = self.path + "/exists"
-		self.connection.create_recursive(test_path, "", acl=zc.zk.OPEN_ACL_UNSAFE)
+		self.connection.create_recursive(
+			test_path, "", acl=zc.zk.OPEN_ACL_UNSAFE)
 		deleted = Deleted(self.connection, test_path)
 		deleted(cb)
 		self.connection.delete_recursive(test_path)
@@ -35,11 +36,14 @@ class DeletedTests(unittest.TestCase):
 	def test_shared_connection(self):
 		if not DO_MOCK:
 			DistributedBag(
-				self.connection, '/altnode/organ/testorgan/substrate/subscription')
+				self.connection,
+				'/altnode/organ/testorgan/substrate/subscription')
 			DistributedBag(
-				self.connection, '/altnode/organ/testorgan/substrate/subscription')
+				self.connection,
+				'/altnode/organ/testorgan/substrate/subscription')
 		else:
-			print "Skipped: test_shared_connection requires a running ZK instance"
+			s = "Skipped: test_shared_connection requires a running ZK instance"
+			print s
 
 	def tearDown(self):
 		self.connection.close()
