@@ -1,27 +1,56 @@
+# Compiled Code
 *.py[co]
 
 # Packages
 *.egg
 *.egg-info
-dist
-build
+dist/
+build/
 eggs
 parts
+target
 bin
 var
 sdist
 develop-eggs
 .installed.cfg
+*.egg-info/
+MANIFEST
 
-# Installer logs
+# Logs
 pip-log.txt
+*.log
 
 # Unit test / coverage reports
 .coverage
 .tox
+htmlcov
 
-#Translations
+# py.test artifacts
+__pycache__
+
+# Translations
 *.mo
 
-#Mr Developer
+# Mr Developer
 .mr.developer.cfg
+
+# vim
+.*.sw[po]
+
+# emacs
+*~
+*#
+
+# ide files
+.komodoproject
+.komodotools
+.classpath
+.project
+.pydevproject
+.settings
+.idea
+*.iml
+*.ipr
+*.iws
+
