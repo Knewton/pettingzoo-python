@@ -41,16 +41,3 @@ __pycache__
 # emacs
 *~
 *#
-
-# ide files
-.komodoproject
-.komodotools
-.classpath
-.project
-.pydevproject
-.settings
-.idea
-*.iml
-*.ipr
-*.iws
-

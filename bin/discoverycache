@@ -1,0 +1,84 @@
+#!/usr/bin/env python
+# vim:filetype=python
+import os
+import yaml
+import pettingzoo.discovery
+import pettingzoo.utils
+import k.config
+from optparse import OptionParser
+
+def cache_files(zkconfig, top):
+	path = os.path.join(os.path.abspath(os.path.expanduser(top)), 'discovery')
+	create_directory(path)
+	conn = pettingzoo.utils.connect_to_zk(
+		pettingzoo.utils.get_server_list(zkconfig))
+	dmc = pettingzoo.discovery.DistributedMultiDiscovery(conn)
+	sclasses = dmc.get_service_classes()
+	for sclass in sclasses:
+		directory = os.path.join(path, sclass)
+		create_directory(directory)
+		snames = dmc.get_service_names(sclass)
+		file_list = os.listdir(directory)
+		for sname in snames:
+			filename = os.path.join(path, sclass, sname + ".yml")
+			if dmc.count_nodes(sclass, sname) > 0:
+				if sname + ".yml" in file_list:
+					file_list.remove(sname + ".yml")
+				with open(filename, "w") as yaml_file:
+					yaml_file.write(yaml.dump(
+						{'server_list': dmc.load_config(sclass, sname)}))
+		for rfile in file_list:
+			rfilename = os.path.join(path, sclass, rfile)
+			os.remove(rfilename)
+
+def create_directory(path):
+	if not os.path.exists(path):
+		os.mkdir(path)
+
+def option_parser():
+	usage = '\n'.join([
+		"usage: %prog [options] [path]",
+		"  Caches discovery configs from zookeeper to a local directory."])
+	parser = OptionParser(usage=usage)
+	parser.add_option(
+		"-s", "--server", dest="server",
+		help="directly set zookeeper server to connect to '127.0.0.1:2181")
+	parser.add_option(
+		"-z", "--zkconfig", dest="zkconfig",
+		help="zookeeper config file: defaults to localhost:2181")
+	parser.add_option(
+		"-o", "--out", dest="out", default="/etc/pettingzoo",
+		help="Directory to write configs out to. defaults to /etc/pettingzoo")
+	parser.add_option(
+		"-d", "--debug", dest="debug", default=False, action="store_true",
+		help="turn on debugging")
+	parser.add_option(
+		"-l", "--lconfig", dest="lconfig",
+		help="python logger config file: defaults to None (stderr)")
+	return parser
+
+def main():
+	(options, args) = option_parser().parse_args()
+	if options.debug:
+		pettingzoo.utils.configure_logger()
+	if options.lconfig:
+		pettingzoo.utils.configure_logger(
+			config_file=os.path.abspath(os.path.expanduser(options.lconfig)))
+	if not options.zkconfig:
+		k.config.KnewtonConfig()._add_config({
+				'header': {'service_class': 'zookeeper'},
+				'host': 'localhost', 'port': 2181},
+			'zookeeper/default')
+		options.zkconfig = 'zookeeper/default'
+	if options.server:
+		host, port = options.server.split(':')
+		k.config.KnewtonConfig()._add_config({
+				'header': {'service_class': 'zookeeper'},
+				'host': host, 'port': int(port)},
+			'zookeeper/cli')
+		options.zkconfig = 'zookeeper/cli'
+	zkconfig = k.config.KnewtonConfig().fetch_config(options.zkconfig)
+	cache_files(zkconfig, options.out)
+
+if __name__ == "__main__":
+	main()
