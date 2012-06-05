@@ -33,17 +33,16 @@ def parse_requirements(file_name):
 
 setup(
 	name="pettingzoo",
-	version="0.3.%s" % get_version(),
+	version="0.3.0" % get_version(),
 	url = "https://wiki.knewton.net/index.php/Tech",
 	author="Devon Jones",
 	author_email="devon@knewton.com",
-	license = "Proprietary",
+	license = "GPLv2",
 	packages=find_packages(),
 	scripts = ["bin/zncreate", "bin/zndelete"],
 	cmdclass = {"test": PyTest},
 	package_data = {"config": ["requirements*.txt"]},
-	install_requires=parse_requirements("requirements.external.txt")
-			+ parse_requirements("requirements.internal.txt"),
+	install_requires=parse_requirements("requirements.txt"),
 	tests_require=parse_requirements("requirements.testing.txt"),
 	description = "Python edition of the PettingZoo framework.",
 	long_description = "\n" + open("README").read(),

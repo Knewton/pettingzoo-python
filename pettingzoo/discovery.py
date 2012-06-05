@@ -77,7 +77,7 @@ import zc.zk
 import zookeeper
 import yaml
 import random
-import k.config
+import pettingzoo.local_config
 from pettingzoo.utils import get_logger
 
 CONFIG_PATH = "/discovery"
@@ -306,7 +306,7 @@ class DistributedDiscovery(object):
 
 	def _load_file_config(self, service_class, service_name):
 		path = '/'.join(['discovery', service_class, service_name])
-		config = k.config.KnewtonConfig().fetch_config(path)
+		config = pettingzoo.local_config.LocalConfig().fetch_config(path)
 		if config.has_key('server_list'):
 			config_list = config['server_list']
 			selectee = random.choice(config_list)
@@ -424,7 +424,7 @@ class DistributedMultiDiscovery(DistributedDiscovery):
 
 	def _load_file_config(self, service_class, service_name):
 		path = '/'.join(['discovery', service_class, service_name])
-		config = k.config.KnewtonConfig().fetch_config(path)
+		config = pettingzoo.local_config.LocalConfig().fetch_config(path)
 		if config.has_key('server_list'):
 			return config['server_list']
 		else:

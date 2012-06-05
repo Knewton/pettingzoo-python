@@ -46,8 +46,7 @@ fi
 
 source $application/bin/activate
 reqs=( \
-	"requirements.external.txt" \
-	"requirements.internal.txt" \
+	"requirements.txt" \
 	"requirements.testing.txt" \
 )
 requirements=$(mktemp)

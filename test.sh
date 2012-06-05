@@ -2,9 +2,6 @@
 
 set -e
 
-virtualenv_name=pettingzoo
-package_name=pettingzoo
-
 usage()
 {
 	cat << EOF
@@ -31,9 +28,9 @@ do
 	esac
 done
 
-. /opt/virtualenvs/${virtualenv_name}/bin/activate
+. /opt/virtualenvs/pettingzoo-python/bin/activate
 
 find . -name '*.pyc' -exec rm {} \;
 
-python ./runtests.py --cov-report html --cov-report term --cov ${package_name}
+python ./runtests.py --cov-report html --cov-report term --cov pettingzoo
 deactivate

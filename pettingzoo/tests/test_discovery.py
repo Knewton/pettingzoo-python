@@ -1,7 +1,7 @@
 import unittest
 import yaml
 import threading
-import k.config
+import pettingzoo.local_config
 import pettingzoo.discovery
 from pettingzoo.utils import connect_to_zk
 
@@ -316,14 +316,14 @@ class FileFallbackTests(unittest.TestCase):
 			'database': 'reports',
 			'encoding': 'utf8'
 		}
-		k.config.KnewtonConfig = k.config.KnewtonConfigTest()
-		k.config.KnewtonConfig().add_config(
+		pettingzoo.local_config.LocalConfig = pettingzoo.local_config.LocalConfigTest()
+		pettingzoo.local_config.LocalConfig().add_config(
 			self.sample, 'discovery/mysql/exist')
 		self.list_sample = {'server_list': [self.sample]}
-		k.config.KnewtonConfig().add_config(
+		pettingzoo.local_config.LocalConfig().add_config(
 			self.list_sample, 'discovery/mysql/list')
 		self.list_sample2 = {'server_list': [self.sample, self.sample2]}
-		k.config.KnewtonConfig().add_config(
+		pettingzoo.local_config.LocalConfig().add_config(
 			self.list_sample2, 'discovery/mysql/mlist')
 
 	def test_config_file_fallback_dc(self):
@@ -352,7 +352,7 @@ class FileFallbackTests(unittest.TestCase):
 		self.assertEquals(config[1], self.sample2)
 
 	def tearDown(self):
-		k.config.KnewtonConfig = k.config.KnewtonConfigDefault()
+		pettingzoo.local_config.LocalConfig = pettingzoo.local_config.LocalConfigDefault()
 		pettingzoo.discovery.CONFIG_PATH = '/discovery'
 		self.connection.close()
 		self.connection = connect_to_zk('127.0.0.1:2181')
