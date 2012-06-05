@@ -2,3 +2,5 @@ netifaces>=0.8,<0.9
 zc.zk>=0.7.0
 zkpython>=0.4
 sphinx==1.1.3
+PyYAML>=3.09
+
