@@ -37,7 +37,7 @@ setup(
 	url = "https://wiki.knewton.net/index.php/Tech",
 	author="Devon Jones",
 	author_email="devon@knewton.com",
-	license = "GPLv2",
+	license = "Apache",
 	packages=find_packages(),
 	scripts = ["bin/zncreate", "bin/zndelete"],
 	cmdclass = {"test": PyTest},
